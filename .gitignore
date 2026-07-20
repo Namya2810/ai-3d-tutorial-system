@@ -1,0 +1,17 @@
+integrated_app/data/glove_sessions/
+**/__pycache__/
+*.pyc
+.env
+**/venv/
+**/node_modules/
+**/dist/
+.pytest_cache/
+_integration_compare/
+outputs/
+.agents/
+.codex*/
+*.blend1
+*.log
+integrated_app/beating_heart_3d.glb
+integrated_app/ui/static/models/beating_heart_3d.glb
+*.inspect.ndjson

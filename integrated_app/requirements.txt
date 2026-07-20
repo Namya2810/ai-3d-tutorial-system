@@ -1,0 +1,24 @@
+# Desktop app (this folder)
+PyQt6
+PyQt6-WebEngine
+opencv-python
+mediapipe==0.10.14
+numpy
+PyOpenGL
+requests
+python-dotenv
+bleak            # uncomment jab glove hardware aa jaye - gesture_sources.py mein use hoga
+google-genai
+groq
+SpeechRecognition
+pyttsx3
+pyaudio
+
+# Local services launched by ../run_all.py
+flask
+werkzeug
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+pymongo

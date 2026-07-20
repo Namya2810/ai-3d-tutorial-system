@@ -1,0 +1,342 @@
+{
+  "_note": "Auto-generated from Tasks_and_Que.xlsx. animation fields are null placeholders - Blender team to fill in real action names once 3D model is ready. Single segment per subject assumed (no sub-grouping) - split further if needed.",
+  "main_tutorial_id": "motorcycle_mechanics",
+  "segments": [
+    {
+      "id": "seg_phy",
+      "title": "Physics - Motorcycle Mechanics",
+      "tasks": [
+        {
+          "task_id": "phy_t1_how_does_a_bike_work",
+          "type": "voice_question",
+          "prompt": "How does a motorcycle work, from engine to wheel?",
+          "expected_keywords": [
+            "engine",
+            "clutch",
+            "gearbox",
+            "chain",
+            "wheel",
+            "power"
+          ],
+          "min_keyword_matches": 1,
+          "concept_hint": "Power flows from the engine through the clutch and gearbox, then via the chain to the rear wheel.",
+          "animation": null,
+          "mini_tutorial_id": "mini_phy_how_does_a_bike_work",
+          "mini_tutorial_title": "How Does a Bike Work",
+          "mini_tutorial_video": "static/mini_tutorials/phy/How Does a Bike Work.mp4"
+        },
+        {
+          "task_id": "phy_t2_bike_power_flow_explained",
+          "type": "gesture_task",
+          "prompt": "Point to each component in order: Engine -> Clutch -> Gearbox -> Chain -> Rear Wheel.",
+          "expected_gesture": "point",
+          "animation": null,
+          "mini_tutorial_id": "mini_phy_bike_power_flow_explained",
+          "mini_tutorial_title": "Bike Power Flow Explained",
+          "mini_tutorial_video": "static/mini_tutorials/phy/Bike Power Flow Explained.mp4"
+        },
+        {
+          "task_id": "phy_t3_clutch_engage_disengage",
+          "type": "gesture_task",
+          "prompt": "Point to the clutch and engage/disengage it using a virtual lever.",
+          "expected_gesture": "grab",
+          "animation": null,
+          "mini_tutorial_id": "mini_phy_clutch_engage_disengage",
+          "mini_tutorial_title": "What is a Clutch",
+          "mini_tutorial_video": "static/mini_tutorials/phy/What is a Clutch.mp4"
+        },
+        {
+          "task_id": "phy_t4_single_plate_clutch",
+          "type": "voice_question",
+          "prompt": "What is a single plate clutch?",
+          "expected_keywords": [
+            "single",
+            "plate",
+            "clutch",
+            "friction",
+            "engage",
+            "power"
+          ],
+          "min_keyword_matches": 1,
+          "concept_hint": "A single plate clutch uses one friction plate to engage/disengage engine power.",
+          "animation": null,
+          "mini_tutorial_id": "mini_phy_single_plate_clutch",
+          "mini_tutorial_title": "Single Plate Clutch",
+          "mini_tutorial_video": "static/mini_tutorials/phy/Single Plate Clutch.mp4"
+        },
+        {
+          "task_id": "phy_t5_clutch_plate_stack",
+          "type": "gesture_task",
+          "prompt": "Count and highlight the clutch plates in the stack.",
+          "expected_gesture": "point",
+          "animation": null,
+          "mini_tutorial_id": "mini_phy_clutch_plate_stack",
+          "mini_tutorial_title": "Multi Plate Clutch",
+          "mini_tutorial_video": "static/mini_tutorials/phy/Multi Plate Clutch.mp4"
+        },
+        {
+          "task_id": "phy_t6_inside_a_bike_gearbox",
+          "type": "gesture_task",
+          "prompt": "Point to the gearbox and open its cross-section.",
+          "expected_gesture": "point",
+          "animation": null,
+          "mini_tutorial_id": "mini_phy_inside_a_bike_gearbox",
+          "mini_tutorial_title": "Inside a Bike Gearbox",
+          "mini_tutorial_video": "static/mini_tutorials/phy/Inside a Bike Gearbox.mp4"
+        },
+        {
+          "task_id": "phy_t7_types_of_gears",
+          "type": "voice_question",
+          "prompt": "What are gears? What are their types?",
+          "expected_keywords": [
+            "gear",
+            "types",
+            "spur",
+            "helical",
+            "bevel",
+            "worm"
+          ],
+          "min_keyword_matches": 1,
+          "concept_hint": "Gears come in types such as spur, helical, bevel, and worm gears.",
+          "animation": null,
+          "mini_tutorial_id": "mini_phy_types_of_gears",
+          "mini_tutorial_title": "Types of Gears",
+          "mini_tutorial_video": "static/mini_tutorials/phy/Types of Gears.mp4"
+        },
+        {
+          "task_id": "phy_t8_types_of_gears",
+          "type": "gesture_task",
+          "prompt": "Point to each component inside the gearbox: shafts, gears, bearings.",
+          "expected_gesture": "point",
+          "animation": null,
+          "mini_tutorial_id": "mini_phy_types_of_gears",
+          "mini_tutorial_title": "Types of Gears",
+          "mini_tutorial_video": "static/mini_tutorials/phy/Types of Gears.mp4"
+        },
+        {
+          "task_id": "phy_t9_constant_mesh_gearbox_working",
+          "type": "voice_question",
+          "prompt": "How does a constant mesh gearbox work?",
+          "expected_keywords": [
+            "constant",
+            "mesh",
+            "gearbox",
+            "gears",
+            "dog clutch",
+            "shaft",
+            "power"
+          ],
+          "min_keyword_matches": 1,
+          "concept_hint": "In a constant mesh gearbox, all gear pairs remain continuously meshed, while a dog clutch locks the selected gear to the shaft to transmit power.",
+          "animation": null,
+          "mini_tutorial_id": "mini_phy_constant_mesh_gearbox_working",
+          "mini_tutorial_title": "Constant Mesh Gearbox Working",
+          "mini_tutorial_video": "static/mini_tutorials/phy/Constant Mesh Gearbox Working.mp4"
+        },
+        {
+          "task_id": "phy_t10_manual_transmission",
+          "type": "gesture_task",
+          "prompt": "Select the correct manual transmission setup from multiple options.",
+          "expected_gesture": "pinch",
+          "animation": null,
+          "mini_tutorial_id": "mini_phy_manual_transmission",
+          "mini_tutorial_title": "Manual Transmission",
+          "mini_tutorial_video": "static/mini_tutorials/phy/Manual Transmission.mp4"
+        },
+        {
+          "task_id": "phy_t11_manual_gear_transmission",
+          "type": "voice_question",
+          "prompt": "How does manual gear transmission work?",
+          "expected_keywords": [
+            "manual",
+            "transmission",
+            "gear",
+            "shift",
+            "clutch"
+          ],
+          "min_keyword_matches": 1,
+          "concept_hint": "Manual transmission requires the rider to manually shift gears using the clutch.",
+          "animation": null,
+          "mini_tutorial_id": "mini_phy_manual_gear_transmission",
+          "mini_tutorial_title": "Manual Gear Transmission",
+          "mini_tutorial_video": "static/mini_tutorials/phy/Manual Gear Transmission.mp4"
+        },
+        {
+          "task_id": "phy_t12_main_shaft_vs_counter_shaft",
+          "type": "gesture_task",
+          "prompt": "Point to both shafts in the gearbox.",
+          "expected_gesture": "point",
+          "animation": null,
+          "mini_tutorial_id": "mini_phy_main_shaft_vs_counter_shaft",
+          "mini_tutorial_title": "Main Shaft vs Counter Shaft",
+          "mini_tutorial_video": "static/mini_tutorials/phy/Main Shaft vs Counter Shaft.mp4"
+        },
+        {
+          "task_id": "phy_t13_bearings_inside_a_gearbox",
+          "type": "gesture_task",
+          "prompt": "Point to the bearings inside the gearbox.",
+          "expected_gesture": "point",
+          "animation": null,
+          "mini_tutorial_id": "mini_phy_bearings_inside_a_gearbox",
+          "mini_tutorial_title": "Bearings Inside a Gearbox",
+          "mini_tutorial_video": "static/mini_tutorials/phy/Bearings Inside a Gearbox.mp4"
+        },
+        {
+          "task_id": "phy_t14_gear_reduction",
+          "type": "gesture_task",
+          "prompt": "Choose the correct gear pair that provides gear reduction.",
+          "expected_gesture": "pinch",
+          "animation": null,
+          "mini_tutorial_id": "mini_phy_gear_reduction",
+          "mini_tutorial_title": "Gear Reduction",
+          "mini_tutorial_video": "static/mini_tutorials/phy/Gear Reduction.mp4"
+        },
+        {
+          "task_id": "phy_t15_sequential_gearbox_mechanism",
+          "type": "gesture_task",
+          "prompt": "Point to the sequential gearbox mechanism.",
+          "expected_gesture": "point",
+          "animation": null,
+          "mini_tutorial_id": "mini_phy_sequential_gearbox_mechanism",
+          "mini_tutorial_title": "Sequential Gearbox Mechanism",
+          "mini_tutorial_video": "static/mini_tutorials/phy/Sequential Gearbox Mechanism.mp4"
+        },
+        {
+          "task_id": "phy_t16_sequential_gearbox_animation",
+          "type": "gesture_task",
+          "prompt": "Point to the shift drum while the animation plays.",
+          "expected_gesture": "point",
+          "animation": null,
+          "mini_tutorial_id": "mini_phy_sequential_gearbox_animation",
+          "mini_tutorial_title": "Sequential Gearbox Animation",
+          "mini_tutorial_video": "static/mini_tutorials/phy/Sequential Gearbox Animation.mp4"
+        },
+        {
+          "task_id": "phy_t17_sequential_t56",
+          "type": "voice_question",
+          "prompt": "How does a Sequential T56 gearbox work, and how is it different?",
+          "expected_keywords": [
+            "sequential",
+            "t56",
+            "gearbox",
+            "shift",
+            "drum",
+            "fork"
+          ],
+          "min_keyword_matches": 1,
+          "concept_hint": "A Sequential T56 gearbox shifts gears one at a time in strict order via a shift drum.",
+          "animation": null,
+          "mini_tutorial_id": "mini_phy_sequential_t56",
+          "mini_tutorial_title": "Sequential T56",
+          "mini_tutorial_video": "static/mini_tutorials/phy/Sequential T56.mp4"
+        },
+        {
+          "task_id": "phy_t18_shift_drum_mechanism",
+          "type": "gesture_task",
+          "prompt": "Rotate the shift drum and observe the shift forks move.",
+          "expected_gesture": "point",
+          "animation": null,
+          "mini_tutorial_id": "mini_phy_shift_drum_mechanism",
+          "mini_tutorial_title": "Shift Drum Mechanism",
+          "mini_tutorial_video": "static/mini_tutorials/phy/Shift Drum Mechanism.mp4"
+        },
+        {
+          "task_id": "phy_t19_ratchet_mechanism",
+          "type": "gesture_task",
+          "prompt": "Operate the ratchet mechanism by clicking or moving the lever.",
+          "expected_gesture": "grab",
+          "animation": null,
+          "mini_tutorial_id": "mini_phy_ratchet_mechanism",
+          "mini_tutorial_title": "Ratchet Mechanism",
+          "mini_tutorial_video": "static/mini_tutorials/phy/Ratchet Mechanism.mp4"
+        },
+        {
+          "task_id": "phy_t20_quickshifter_working",
+          "type": "voice_question",
+          "prompt": "What is a quick shifter?",
+          "expected_keywords": [
+            "quick",
+            "shifter",
+            "clutchless",
+            "sensor",
+            "shift"
+          ],
+          "min_keyword_matches": 1,
+          "concept_hint": "A quick shifter allows clutchless gear shifts using a sensor that briefly cuts power.",
+          "animation": null,
+          "mini_tutorial_id": "mini_phy_quickshifter_working",
+          "mini_tutorial_title": "Quickshifter Working",
+          "mini_tutorial_video": "static/mini_tutorials/phy/Quickshifter Working.mp4"
+        },
+        {
+          "task_id": "phy_t21_planetary_gears",
+          "type": "voice_question",
+          "prompt": "What are planetary gears?",
+          "expected_keywords": [
+            "planetary",
+            "gear",
+            "sun",
+            "planet",
+            "ring",
+            "carrier"
+          ],
+          "min_keyword_matches": 1,
+          "concept_hint": "Planetary gears consist of a sun gear, planet gears, a carrier, and a ring gear.",
+          "animation": null,
+          "mini_tutorial_id": "mini_phy_planetary_gears",
+          "mini_tutorial_title": "Planetary Gears",
+          "mini_tutorial_video": "static/mini_tutorials/phy/Planetary Gears.mp4"
+        },
+        {
+          "task_id": "phy_t22_planetary_gear_animation",
+          "type": "gesture_task",
+          "prompt": "Rotate the input gear and observe the planetary gear motion.",
+          "expected_gesture": "point",
+          "animation": null,
+          "mini_tutorial_id": "mini_phy_planetary_gear_animation",
+          "mini_tutorial_title": "Planetary Gear Animation",
+          "mini_tutorial_video": "static/mini_tutorials/phy/Planetary Gear Animation.mp4"
+        },
+        {
+          "task_id": "phy_t23_rack_pinion_worm_gears",
+          "type": "gesture_task",
+          "prompt": "Point to the Rack & Pinion mechanism and the Worm Gear in the model.",
+          "expected_gesture": "point",
+          "animation": null,
+          "mini_tutorial_id": "mini_phy_rack_pinion_worm_gears",
+          "mini_tutorial_title": "Rack & Pinion & Worm Gears",
+          "mini_tutorial_video": "static/mini_tutorials/phy/Rack & Pinion & Worm Gear.mp4"
+        },
+        {
+          "task_id": "phy_t24_complex_gear_mechanism",
+          "type": "voice_question",
+          "prompt": "What are some examples of complex gear mechanisms?",
+          "expected_keywords": [
+            "complex",
+            "gear",
+            "mechanism",
+            "differential",
+            "planetary",
+            "worm"
+          ],
+          "min_keyword_matches": 1,
+          "concept_hint": "Complex gear mechanisms include differentials, planetary gear sets, and worm drives.",
+          "animation": null,
+          "mini_tutorial_id": "mini_phy_complex_gear_mechanism",
+          "mini_tutorial_title": "Complex Gear Mechanism",
+          "mini_tutorial_video": "static/mini_tutorials/phy/Complex Gear Mechanism.mp4"
+        },
+        {
+          "task_id": "phy_t25_differential_working",
+          "type": "gesture_task",
+          "prompt": "Rotate one wheel and observe how the differential distributes power.",
+          "expected_gesture": "grab",
+          "animation": null,
+          "mini_tutorial_id": "mini_phy_differential_working",
+          "mini_tutorial_title": "Differential Working",
+          "mini_tutorial_video": "static/mini_tutorials/phy/Differential Working.mp4"
+        }
+      ]
+    }
+  ]
+}

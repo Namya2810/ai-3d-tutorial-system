@@ -1,0 +1,21 @@
+{
+  "confusion": {
+    "emotion_weight": 0.6,
+    "pulse_weight": 0.4,
+    "attentive_max": 0.25,
+    "confused_min": 0.6,
+    "checkin_threshold": 0.6,
+    "checkin_sustained_seconds": 3,
+    "checkin_cooldown_seconds": 45
+  },
+  "pulse": {
+    "resting_bpm": 70,
+    "elevated_bpm": 110,
+    "valid_min": 35,
+    "valid_max": 220
+  },
+  "glove_logging": {
+    "enabled": true,
+    "flush_every_rows": 30
+  }
+}

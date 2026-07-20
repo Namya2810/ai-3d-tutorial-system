@@ -1,0 +1,385 @@
+/* ============================================================
+   AI 3D Tutorial System - App-wide dark theme
+   Colors match the web-based pages (Profile login, 3D viewer HTML)
+   so the whole app feels like one consistent product, even though
+   some pages are native Qt widgets and some are embedded HTML.
+   ============================================================ */
+
+* {
+    outline: none;
+}
+
+QWidget {
+    background-color: #0A0E14;
+    color: #E7ECF2;
+    font-family: "Space Grotesk", "Segoe UI", sans-serif;
+    font-size: 14px;
+}
+
+QMainWindow {
+    background-color: #0A0E14;
+}
+
+/* ---------------- Sidebar ---------------- */
+
+#Sidebar {
+    background-color: #111823;
+    border-right: 1px solid #232F40;
+}
+
+#SidebarTitle {
+    color: #4FD1FF;
+    font-size: 17px;
+    font-weight: 600;
+    border: none;
+    background: transparent;
+    padding: 14px 6px 20px 6px;
+}
+
+#SidebarButton {
+    text-align: left;
+    padding: 11px 14px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background-color: transparent;
+    color: #8B97A6;
+    font-size: 13.5px;
+    font-weight: 500;
+}
+
+#SidebarButton:hover {
+    background-color: #182131;
+    color: #E7ECF2;
+    border: 1px solid #232F40;
+}
+
+#SidebarButton:pressed {
+    background-color: rgba(79, 209, 255, 0.14);
+    color: #4FD1FF;
+    border: 1px solid #4FD1FF;
+}
+
+/* ---------------- Titles / headings ---------------- */
+
+#PageTitle {
+    font-size: 19px;
+    font-weight: 600;
+    color: #E7ECF2;
+    padding: 10px 0 14px 0;
+}
+
+#HomeTitle {
+    font-size: 27px;
+    font-weight: 600;
+    color: #4FD1FF;
+    font-family: "Space Grotesk", "Segoe UI", sans-serif;
+}
+
+#HomeSubtitle {
+    font-size: 14.5px;
+    color: #8B97A6;
+    padding: 12px 40px;
+    line-height: 1.5;
+}
+
+/* ---------------- Status / mono badges ----------------
+   Used for: confusion score banner, gesture/segment status,
+   mini-tutorial "why this opened" note. Styled like the small
+   monospace status chips in the web pages. */
+
+#StatusLabel {
+    background-color: #111823;
+    border: 1px solid #232F40;
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: #4FD1FF;
+    font-family: "JetBrains Mono", "Consolas", monospace;
+    font-size: 11.5px;
+}
+
+/* ---------------- Pages ---------------- */
+
+#HomePage, #Tutorial3DPage, #QuizPage, #AssistantPanel,
+#MiniTutorialPage, #ProfilePage {
+    background-color: #0A0E14;
+}
+
+/* ---------------- Buttons ---------------- */
+
+QPushButton {
+    background-color: rgba(79, 209, 255, 0.14);
+    color: #4FD1FF;
+    border: 1px solid #4FD1FF;
+    border-radius: 9px;
+    padding: 9px 16px;
+    font-family: "Space Grotesk", "Segoe UI", sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+QPushButton:hover {
+    background-color: #4FD1FF;
+    color: #0A0E14;
+}
+
+QPushButton:pressed {
+    background-color: #3ba8cf;
+    color: #0A0E14;
+}
+
+QPushButton:disabled {
+    background-color: transparent;
+    color: #4F5C6E;
+    border: 1px solid #232F40;
+}
+
+/* ---------------- Text inputs ---------------- */
+
+QLineEdit {
+    background-color: #182131;
+    border: 1px solid #232F40;
+    border-radius: 8px;
+    padding: 9px 12px;
+    color: #E7ECF2;
+    selection-background-color: #4FD1FF;
+    selection-color: #0A0E14;
+}
+
+QLineEdit:focus {
+    border: 1px solid #4FD1FF;
+}
+
+/* ---------------- Chat / text areas ---------------- */
+
+#ChatBox {
+    background-color: #111823;
+    border: 1px solid #232F40;
+    border-radius: 10px;
+    padding: 10px;
+    color: #E7ECF2;
+    font-size: 13px;
+}
+
+/* ---------------- Dropdowns (Quiz: subject/topic/subtopic) ---------------- */
+
+QComboBox {
+    background-color: #182131;
+    border: 1px solid #232F40;
+    border-radius: 8px;
+    padding: 8px 10px;
+    color: #E7ECF2;
+    min-width: 140px;
+}
+
+QComboBox:hover {
+    border: 1px solid #4FD1FF;
+}
+
+QComboBox::drop-down {
+    border: none;
+    width: 24px;
+}
+
+QComboBox QAbstractItemView {
+    background-color: #182131;
+    border: 1px solid #232F40;
+    selection-background-color: rgba(79, 209, 255, 0.18);
+    selection-color: #4FD1FF;
+    color: #E7ECF2;
+    outline: none;
+}
+
+/* ---------------- Radio buttons (Quiz answer options) ---------------- */
+
+QRadioButton {
+    color: #E7ECF2;
+    padding: 8px 4px;
+    font-size: 13.5px;
+    spacing: 10px;
+}
+
+QRadioButton::indicator {
+    width: 16px;
+    height: 16px;
+    border-radius: 9px;
+    border: 1px solid #232F40;
+    background-color: #182131;
+}
+
+QRadioButton::indicator:hover {
+    border: 1px solid #4FD1FF;
+}
+
+QRadioButton::indicator:checked {
+    border: 1px solid #4FD1FF;
+    background-color: #4FD1FF;
+}
+
+/* ---------------- Lists (kept for any future use) ---------------- */
+
+QListWidget {
+    background-color: #111823;
+    border: 1px solid #232F40;
+    border-radius: 10px;
+    color: #E7ECF2;
+}
+
+QListWidget::item:selected {
+    background-color: rgba(79, 209, 255, 0.14);
+    color: #4FD1FF;
+}
+
+/* ---------------- Scrollbars ---------------- */
+
+QScrollBar:vertical {
+    background: transparent;
+    width: 10px;
+    margin: 0;
+}
+
+QScrollBar::handle:vertical {
+    background: #232F40;
+    border-radius: 5px;
+    min-height: 24px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #4FD1FF;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0;
+}
+
+QScrollBar:horizontal {
+    background: transparent;
+    height: 10px;
+}
+
+QScrollBar::handle:horizontal {
+    background: #232F40;
+    border-radius: 5px;
+    min-width: 24px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background: #4FD1FF;
+}
+
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    width: 0;
+}
+/* ============================================================
+   ADDON RULES - AXIOM UI se liye gaye card/badge/chip styles.
+   Ye rules tumhare EXISTING styles.qss ke NEECHE paste karne hain
+   (copy-paste at the end of the file) - kuch bhi purana overwrite/
+   replace nahi karte, sirf naye object-names ke liye hain jo
+   widgets_cards.py / widgets_common.py use karte hain.
+   ============================================================ */
+
+QFrame#Card {
+    background-color: #111823;
+    border: 1px solid #232F40;
+    border-radius: 12px;
+}
+QFrame#Card:hover {
+    border: 1px solid #232F40;
+    background-color: #182131;
+}
+
+QLabel#CardLabel {
+    font-family: "JetBrains Mono", "Consolas", monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: #8B97A6;
+}
+QLabel#CardValue {
+    font-family: "Space Grotesk", "Segoe UI", sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    color: #E7ECF2;
+}
+QLabel#CardCaption {
+    font-size: 11px;
+    color: #8B97A6;
+}
+
+QLabel#SectionTitle {
+    font-family: "Space Grotesk", "Segoe UI", sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: #E7ECF2;
+}
+
+QFrame#Badge {
+    border-radius: 4px;
+    padding: 2px 6px;
+}
+QLabel#BadgeSample {
+    color: #f59e0b;
+    background-color: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    border-radius: 4px;
+    font-family: "JetBrains Mono", "Consolas", monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 2px 6px;
+}
+QLabel#BadgeLive {
+    color: #34d399;
+    background-color: rgba(52, 211, 153, 0.12);
+    border: 1px solid rgba(52, 211, 153, 0.35);
+    border-radius: 4px;
+    font-family: "JetBrains Mono", "Consolas", monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 2px 6px;
+}
+
+QFrame#Chip {
+    background-color: #111823;
+    border: 1px solid #232F40;
+    border-radius: 8px;
+}
+QFrame#Chip:hover {
+    border: 1px solid #4FD1FF;
+}
+QFrame#ChipActive {
+    background-color: rgba(79, 209, 255, 0.10);
+    border: 1px solid #4FD1FF;
+    border-radius: 8px;
+}
+
+QLabel#SubjectTag {
+    font-family: "JetBrains Mono", "Consolas", monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    border-radius: 4px;
+    padding: 2px 6px;
+}
+
+QFrame#StatusPill {
+    background-color: #111823;
+    border: 1px solid #232F40;
+    border-radius: 12px;
+}
+QLabel#StatusPillText {
+    font-family: "JetBrains Mono", "Consolas", monospace;
+    font-size: 10px;
+    color: #8B97A6;
+}
+
+QPushButton#GhostButton {
+    background-color: #182131;
+    color: #E7ECF2;
+    border: 1px solid #232F40;
+    border-radius: 8px;
+    padding: 8px 14px;
+}
+QPushButton#GhostButton:hover {
+    border: 1px solid #4FD1FF;
+    color: #4FD1FF;
+}

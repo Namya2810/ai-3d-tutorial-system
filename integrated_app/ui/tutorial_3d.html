@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>3D Tutorial Viewer</title>
+<style>
+  :root{
+    --void:#0A0E14; --cyan:#4FD1FF; --violet:#9B6BFF;
+    --text:#E7ECF2; --text-muted:#8B97A6; --text-dim:#4F5C6E;
+    --font-mono:'JetBrains Mono', monospace; --font-display:'Space Grotesk', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{ height:100%; margin:0; background:var(--void); overflow:hidden; }
+  #viewerStage{ position:relative; width:100%; height:100%; }
+  canvas#glcanvas{ width:100%; height:100%; display:block; }
+
+  /* Segment banner - task/question ka short title yahan dikhta hai upar */
+  #segmentBanner{
+    position:absolute; top:16px; left:16px; right:145px;
+    background:rgba(17,24,35,0.85); border:1px solid #232F40; border-radius:10px;
+    padding:10px 14px; color:var(--text); font-family:var(--font-mono);
+    font-size:12px; letter-spacing:.02em; pointer-events:none;
+  }
+  #segmentBanner .bannerMeta{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:4px; }
+  #segmentBanner .label{ color:var(--text-dim); text-transform:uppercase; font-size:9.5px; }
+  #segmentBanner .title{ color:var(--cyan); font-size:13px; }
+  #learningState{ padding:4px 9px; border-radius:999px; border:1px solid #314258;
+    color:#b8c5d5; background:#17202c; font-size:9.5px; font-weight:800; letter-spacing:.06em; }
+  #learningState.speaking{ color:#f6dc86; border-color:#806b2e; background:#2d2819; }
+  #learningState.active{ color:#89e6ff; border-color:#27718b; background:#102b35; }
+  #learningState.checking{ color:#d5bdff; border-color:#62459c; background:#241c38; }
+  #learningState.success{ color:#8ff0b1; border-color:#2e8150; background:#153322; }
+  #learningState.help{ color:#ffb4bd; border-color:#914451; background:#3a1e24; }
+
+  /* Gesture status - jo POC mein bottom-left cyan box tha, wahi yahan bhi hai */
+  #gesturePocStatus{
+    position:absolute; bottom:16px; left:16px;
+    background:rgba(17,24,35,0.85); border:1px solid #232F40; border-radius:8px;
+    padding:8px 12px; color:var(--cyan); font-family:var(--font-mono);
+    font-size:11px; pointer-events:none;
+  }
+
+  /* ---------------------------------------------------------------------
+     TEACHER AVATAR - static (no movement/lip-sync). Ek chhota image/bust
+     bottom-right pe fixed rehta hai, saath mein ek text bubble jiska text
+     JS se change hota hai. SAME overlay do jagah use hota hai:
+       1. Naya task assign hone par (showTeacherPrompt se "task" prompt)
+       2. Confusion check-in par (showTeacherPrompt se "Do you know X?")
+     Koi animation/hilna-dulna nahi - sirf text badalta hai, jaisa
+     Namya ne clarify kiya.
+  --------------------------------------------------------------------- */
+  #teacherOverlay{
+    position:absolute; bottom:16px; right:16px; max-width:280px;
+    display:none; align-items:flex-end; gap:10px;
+  }
+  #teacherOverlay.active{ display:flex; }
+  #teacherAvatarImg{
+    width:64px; height:64px; border-radius:50%; object-fit:cover;
+    border:2px solid var(--cyan); flex-shrink:0; background:#1a2230;
+  }
+  #teacherBubble{
+    background:rgba(17,24,35,0.92); border:1px solid var(--violet); border-radius:12px;
+    border-bottom-right-radius:2px; padding:10px 12px; color:var(--text);
+    font-family:var(--font-mono); font-size:12px; line-height:1.4;
+  }
+
+  #modelLoading{
+    position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+    flex-direction:column; gap:10px; color:var(--text-muted); font-family:var(--font-mono);
+    font-size:11px; text-transform:uppercase; letter-spacing:.05em; background:rgba(10,14,20,0.6);
+  }
+  #modelLoading.active{ display:flex; }
+  #handCursor{
+    position:absolute; width:34px; height:34px; margin:-17px 0 0 -17px;
+    border:3px solid var(--cyan); border-radius:50%; display:none;
+    pointer-events:none; box-shadow:0 0 18px rgba(79,209,255,.8);
+    transition:border-color .12s, transform .12s;
+  }
+  #handCursor.active{ display:block; }
+  #handCursor.hovering{ border-color:#FFE66D; transform:scale(1.18); }
+  #handCursor::after{ content:''; position:absolute; inset:5px; border-radius:50%;
+    background:conic-gradient(var(--cyan) var(--dwell,0%), transparent 0); opacity:.55; }
+  #interactionFeedback{ position:absolute; left:50%; bottom:78px; transform:translateX(-50%);
+    display:none; padding:12px 18px; border-radius:10px; color:white;
+    font:600 13px var(--font-mono); background:rgba(20,30,42,.94); border:1px solid var(--cyan); }
+  #interactionFeedback.active{ display:block; }
+  #interactionFeedback.error{ border-color:#ff6b7a; color:#ffb5bd; }
+  #interactionHint{ position:absolute; top:112px; left:50%; transform:translateX(-50%);
+    display:none; max-width:620px; padding:10px 16px; border-radius:10px;
+    color:#071018; background:rgba(255,230,109,.96); border:2px solid #fff2a8;
+    font:700 13px var(--font-mono); text-align:center; pointer-events:none; }
+  #interactionHint.active{ display:block; }
+  .spinner{ width:28px; height:28px; border:2px solid #232F40; border-top-color:var(--cyan); border-radius:50%; animation:spin 0.8s linear infinite; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div id="viewerStage">
+  <canvas id="glcanvas"></canvas>
+  <div id="segmentBanner">
+    <div class="bannerMeta"><div class="label" id="taskPosition">Current task</div><div id="learningState">PREPARING</div></div>
+    <div class="title" id="segmentTitle">Loading tutorial...</div>
+  </div>
+  <div id="gesturePocStatus">Gesture source: - | -</div>
+
+  <div id="teacherOverlay">
+    <div id="teacherBubble">...</div>
+    <img id="teacherAvatarImg" src="static/img/avatar_banner.png" alt="Teacher">
+  </div>
+
+  <div id="modelLoading"><div class="spinner"></div><span>Loading 3D model...</span></div>
+  <div id="handCursor"></div>
+  <div id="interactionFeedback"></div>
+  <div id="interactionHint"></div>
+</div>
+
+<script src="static/js/three.min.js"></script>
+<script src="static/js/GLTFLoader.js"></script>
+<script>
+/* =========================================================
+   THREE.JS 3D VIEWER
+   (POC se liya hua pattern. Ab AnimationMixer bhi hai, taaki
+   ek hi .glb file ke andar bane multiple named animations
+   [Idle / CutAorta / PointVentricle / ...] ke beech switch
+   ho sake - naya model load karne ki zaroorat nahi.)
+========================================================= */
+let threeReady = false, scene, camera, renderer, modelGroup, autoRotate = false;
+let mixer = null;
+let actions = {};       // animation name -> THREE.AnimationAction
+let activeAction = null;
+let clock = null;
+let loadedModel = null;
+const raycaster = new THREE.Raycaster();
+const pointerNdc = new THREE.Vector2();
+let interactionTask = {enabled:false, expected_targets:[]};
+let selectedTargets = new Set();
+let hoveredTarget = null, hoverStartedAt = 0, lastSelectionAt = 0;
+let virtualPointer = {x:0.5, y:0.5};
+const originalMaterials = new Map();
+let draggingTool = false;
+let lastGrabAt = 0;
+let cutPathStarted = false;
+let cutGuideGroup = null;
+let realisticScalpelGroup = null;
+let importedCutawayGroup = null;
+let importedCutawayLidGroup = null;
+let dissectionAnimating = false;
+let dissectionCompletedPending = false;
+let currentSceneState = 'INITIAL';
+let anaglyphEnabled = false, stereoCamera = null;
+let anaglyphTargetL = null, anaglyphTargetR = null;
+let anaglyphScene = null, anaglyphCamera = null, anaglyphMaterial = null;
+
+function initAnaglyph(){
+  if(anaglyphScene) return;
+  stereoCamera = new THREE.StereoCamera();
+  // The laboratory scene is roughly ten Three.js units wide. A real-world
+  // 64 mm eye separation is therefore too subtle here; this calibrated
+  // separation creates visible depth disparity through red/cyan glasses.
+  stereoCamera.eyeSep = 0.22;
+  anaglyphTargetL = new THREE.WebGLRenderTarget(1, 1, {minFilter:THREE.LinearFilter, magFilter:THREE.NearestFilter});
+  anaglyphTargetR = new THREE.WebGLRenderTarget(1, 1, {minFilter:THREE.LinearFilter, magFilter:THREE.NearestFilter});
+  anaglyphMaterial = new THREE.ShaderMaterial({
+    uniforms:{
+      mapLeft:{value:anaglyphTargetL.texture}, mapRight:{value:anaglyphTargetR.texture},
+      colorMatrixLeft:{value:new THREE.Matrix3().set(
+        0.4561,-0.0400822,-0.0152161, 0.500484,-0.0378246,-0.0205971, 0.176381,-0.0157589,-0.00546856)},
+      colorMatrixRight:{value:new THREE.Matrix3().set(
+        -0.0434706,0.378476,-0.0721527, -0.0879388,0.73364,-0.112961, -0.00155529,-0.0184503,1.2264)}
+    },
+    vertexShader:'varying vec2 vUv; void main(){vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
+    fragmentShader:'uniform sampler2D mapLeft; uniform sampler2D mapRight; uniform mat3 colorMatrixLeft; uniform mat3 colorMatrixRight; varying vec2 vUv; void main(){vec2 uv=vec2(vUv.x,vUv.y); vec4 l=texture2D(mapLeft,uv); vec4 r=texture2D(mapRight,uv); vec3 c=clamp(colorMatrixLeft*l.rgb+colorMatrixRight*r.rgb,0.0,1.0); gl_FragColor=vec4(c,max(l.a,r.a));}'
+  });
+  anaglyphScene = new THREE.Scene();
+  anaglyphCamera = new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+  anaglyphScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2), anaglyphMaterial));
+}
+
+function setAnaglyphEnabled(enabled){
+  anaglyphEnabled = !!enabled;
+  if(anaglyphEnabled) initAnaglyph();
+}
+
+function initThree(){
+  if (threeReady) return;
+  const canvas = document.getElementById('glcanvas');
+  const stage = document.getElementById('viewerStage');
+  renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+  clock = new THREE.Clock();
+
+  const resize = () => {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    if(anaglyphTargetL){ anaglyphTargetL.setSize(w, h); anaglyphTargetR.setSize(w, h); }
+  };
+
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+  // Elevated three-quarter view: the current Exhibit_Base reads as a lab
+  // tabletop and both kidneys remain easy to target with the hand cursor.
+  camera.position.set(0, 9.0, 7.5);
+  camera.lookAt(0, 0, 0);
+
+  const ambient = new THREE.AmbientLight(0x8899aa, 0.9);
+  scene.add(ambient);
+  const key = new THREE.PointLight(0x4FD1FF, 2.2, 30); key.position.set(5,5,5); scene.add(key);
+  const rim = new THREE.PointLight(0x9B6BFF, 1.6, 30); rim.position.set(-5,-3,-5); scene.add(rim);
+
+  modelGroup = new THREE.Group();
+  scene.add(modelGroup);
+
+  window.addEventListener('resize', resize);
+  resize();
+
+  threeReady = true;
+  animate();
+}
+
+function loadModel(glbPath){
+  const modelLoadingEl = document.getElementById('modelLoading');
+  while (modelGroup.children.length) modelGroup.remove(modelGroup.children[0]);
+  mixer = null;
+  actions = {};
+  activeAction = null;
+
+  modelLoadingEl.classList.add('active');
+  const loader = new THREE.GLTFLoader();
+  loader.load(
+    glbPath,
+    (gltf) => {
+      modelLoadingEl.classList.remove('active');
+      const model = gltf.scene;
+      loadedModel = model;
+
+      // Center + scale the model to roughly fit the viewer stage
+      const box = new THREE.Box3().setFromObject(model);
+      const size = new THREE.Vector3();
+      box.getSize(size);
+      const center = new THREE.Vector3();
+      box.getCenter(center);
+      const maxDim = Math.max(size.x, size.y, size.z) || 1;
+      // Fit the complete lab table with comfortable padding so side anatomy
+      // never touches or gets clipped by the viewer edges.
+      const scale = 9.5 / maxDim;
+      model.scale.set(scale, scale, scale);
+      // Root translation is not multiplied by its own scale in Three.js.
+      // Apply the scaled center explicitly so the exhibit stays centered.
+      model.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
+
+      // The current GLB contains an exhibition base rather than the final
+      // Blender lab table. Make that base readable against the dark viewer.
+      const exhibitBase = model.getObjectByName('Exhibit_Base');
+      if(exhibitBase){
+        exhibitBase.traverse(obj => {
+          if(!obj.isMesh) return;
+          const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
+          const visible = materials.map(material => {
+            const copy = material.clone();
+            if(copy.color) copy.color.set(0x24465a);
+            copy.roughness = 0.72;
+            copy.metalness = 0.08;
+            return copy;
+          });
+          obj.material = Array.isArray(obj.material) ? visible : visible[0];
+        });
+      }
+
+      modelGroup.add(model);
+      loadDissectionAssets();
+      // Task configuration can arrive while the GLB is still loading. Apply
+      // its scene state again now that named objects actually exist.
+      setSceneState(interactionTask.scene_state || 'INITIAL');
+      prepareInteractionVisuals();
+
+      // Model ke andar bake hue saare named actions ko store kar lo -
+      // Blender mein jo "Idle"/"CutAorta"/"PointVentricle" naam diye the,
+      // wahi naam yahan gltf.animations[i].name mein aate hain.
+      if (gltf.animations && gltf.animations.length){
+        mixer = new THREE.AnimationMixer(model);
+        gltf.animations.forEach((clip) => {
+          actions[clip.name] = mixer.clipAction(clip);
+        });
+        playAnimation('Idle');
+      }
+    },
+    undefined,
+    (err) => {
+      modelLoadingEl.classList.remove('active');
+      console.error('Model failed to load:', err);
+    }
+  );
+}
+
+function namedMesh(name, geometry, material, position, rotation){
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.name = name; mesh.position.set(...position);
+  if(rotation) mesh.rotation.set(...rotation);
+  loadedModel.add(mesh); return mesh;
+}
+
+function loadSubjectScene(subject){
+  initThree();
+  if(subject === 'biology'){
+    loadModel('static/models/Biology_Kidney_Lab_Table.glb');
+    camera.position.set(0,9,7.5); camera.lookAt(0,0,0); return;
+  }
+  if(realisticScalpelGroup) realisticScalpelGroup.visible=false;
+  if(importedCutawayGroup) importedCutawayGroup.visible=false;
+  if(importedCutawayLidGroup) importedCutawayLidGroup.visible=false;
+  while(modelGroup.children.length) modelGroup.remove(modelGroup.children[0]);
+  mixer=null; actions={}; activeAction=null; originalMaterials.clear();
+  loadedModel = new THREE.Group(); modelGroup.add(loadedModel);
+  const dark=new THREE.MeshStandardMaterial({color:0x17364a,roughness:.7});
+  namedMesh('Lab_Table',new THREE.BoxGeometry(10,.35,6),dark,[0,-1.65,0]);
+  if(subject === 'chemistry'){
+    const glass=new THREE.MeshStandardMaterial({color:0x9fe8ff,transparent:true,opacity:.42,roughness:.15});
+    const metal=new THREE.MeshStandardMaterial({color:0xb8c4cf,metalness:.7,roughness:.25});
+    const pink=new THREE.MeshStandardMaterial({color:0xff6fae,transparent:true,opacity:.75});
+    namedMesh('Burette',new THREE.CylinderGeometry(.15,.15,5,24),glass,[-2.6,1.0,0]);
+    namedMesh('Burette_Stopcock',new THREE.BoxGeometry(.9,.14,.14),metal,[-2.6,-1.0,0]);
+    namedMesh('Pipette',new THREE.CylinderGeometry(.09,.16,3.6,18),glass,[-.9,.2,.2],[0,0,.35]);
+    namedMesh('Conical_Flask',new THREE.CylinderGeometry(.35,1.05,2.2,32),glass,[1.2,-.4,0]);
+    namedMesh('Phenolphthalein',new THREE.CylinderGeometry(.35,.35,1.2,20),pink,[3.2,-.8,.2]);
+    namedMesh('Acid_Solution',new THREE.CylinderGeometry(.6,.6,1.1,20),new THREE.MeshStandardMaterial({color:0x54b7ff}),[-.4,-.9,-1.5]);
+    namedMesh('Base_Solution',new THREE.CylinderGeometry(.6,.6,1.1,20),new THREE.MeshStandardMaterial({color:0xff79bc}),[1.2,-.9,-1.5]);
+    camera.position.set(0,5.8,9); camera.lookAt(0,0,0);
+  }else{
+    const steel=new THREE.MeshStandardMaterial({color:0x8ea5b7,metalness:.8,roughness:.22});
+    const copper=new THREE.MeshStandardMaterial({color:0xd98c38,metalness:.65,roughness:.3});
+    namedMesh('Engine',new THREE.BoxGeometry(2.1,1.8,1.7),dark,[-3.6,-.4,0]);
+    namedMesh('Clutch',new THREE.CylinderGeometry(1,1,.8,32),copper,[-1.5,-.4,0],[Math.PI/2,0,0]);
+    const gearbox=new THREE.Group();
+    gearbox.name='Gearbox'; gearbox.position.set(.7,-.3,0); loadedModel.add(gearbox);
+    for(let i=0;i<4;i++){
+      const gear=new THREE.Mesh(new THREE.TorusGeometry(.45+.13*i,.16,10,24),i%2?steel:copper);
+      gear.name='Gear_'+(i+1); gear.position.set((i%2)*1.0,Math.floor(i/2)*.9,0); gearbox.add(gear);
+    }
+    namedMesh('Main_Shaft',new THREE.CylinderGeometry(.12,.12,3.4,18),steel,[1.2,-.25,0],[0,0,Math.PI/2]);
+    namedMesh('Counter_Shaft',new THREE.CylinderGeometry(.12,.12,3.0,18),steel,[1.2,.75,0],[0,0,Math.PI/2]);
+    namedMesh('Chain',new THREE.TorusGeometry(1.4,.09,10,48),copper,[3.4,-.35,0],[Math.PI/2,0,0]);
+    namedMesh('Rear_Wheel',new THREE.TorusGeometry(1.25,.25,18,48),steel,[4.3,-.3,0],[0,Math.PI/2,0]);
+    namedMesh('Shift_Drum',new THREE.CylinderGeometry(.42,.42,1.8,24),copper,[.8,-1.15,1.4],[0,0,Math.PI/2]);
+    namedMesh('Differential',new THREE.SphereGeometry(.75,24,16),steel,[3.0,-.5,1.2]);
+    namedMesh('Bearing',new THREE.TorusGeometry(.42,.13,12,30),steel,[2.2,.8,1.2]);
+    namedMesh('Rack_Pinion',new THREE.BoxGeometry(1.8,.22,.28),copper,[2.4,.35,-1.3]);
+    namedMesh('Worm_Gear',new THREE.CylinderGeometry(.3,.3,1.5,24),steel,[3.5,.45,-1.2],[0,0,Math.PI/2]);
+    namedMesh('Planetary_Gear',new THREE.TorusGeometry(.62,.15,12,32),copper,[2.6,1.0,-.4]);
+    namedMesh('Ratchet',new THREE.CylinderGeometry(.48,.48,.25,20),steel,[3.8,.9,.2],[Math.PI/2,0,0]);
+    namedMesh('Quickshifter',new THREE.BoxGeometry(.8,.28,.35),copper,[1.2,-1.15,-1.1]);
+    camera.position.set(0,5.8,10); camera.lookAt(0,0,0);
+  }
+  prepareInteractionVisuals(); setSceneState('INITIAL');
+}
+
+/* task_engine.py ke current task ka "animation" field yahan aata hai -
+   task_engine.py khud kuch nahi janta JS ke baare mein, sirf
+   tutorial_3d_page.py runJavaScript(`playAnimation('CutAorta')`) call
+   karta hai jab task badalta hai. */
+function playAnimation(name){
+  if (!mixer || !actions[name]) return;
+  const next = actions[name];
+  if (activeAction === next) return;
+
+  next.reset().fadeIn(0.3).play();
+  if (activeAction) activeAction.fadeOut(0.3);
+  activeAction = next;
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  const delta = clock ? clock.getDelta() : 0;
+  if (mixer) mixer.update(delta);
+  if (autoRotate) modelGroup.rotation.y += 0.004;
+  if(anaglyphEnabled){
+    initAnaglyph();
+    stereoCamera.update(camera);
+    renderer.setRenderTarget(anaglyphTargetL); renderer.clear(); renderer.render(scene, stereoCamera.cameraL);
+    renderer.setRenderTarget(anaglyphTargetR); renderer.clear(); renderer.render(scene, stereoCamera.cameraR);
+    renderer.setRenderTarget(null); renderer.clear(); renderer.render(anaglyphScene, anaglyphCamera);
+  }else{
+    renderer.setRenderTarget(null); renderer.render(scene, camera);
+  }
+}
+
+/* =========================================================
+   GESTURE BRIDGE - Python (tutorial_3d_page.py) se runJavaScript()
+   ke through call hote hain.
+========================================================= */
+function applyGestureRotate(deltaDeg, navigationOverride=false){
+  if (!threeReady) return;
+  autoRotate = false;
+  // Manual rotation remains available for exploration, but selection tasks
+  // keep a stable camera so raycasting and dwell circles stay accurate.
+  if((navigationOverride || !interactionTask.enabled) && !dissectionAnimating){
+    modelGroup.rotation.y += deltaDeg * (Math.PI/180) * 4;
+  }
+}
+
+function applyGestureZoom(delta){
+  if (!threeReady) return;
+  camera.zoom = Math.min(2.2, Math.max(0.65, camera.zoom + delta * 2.2));
+  camera.updateProjectionMatrix();
+}
+
+function applyGestureGrab(active){
+  if (!threeReady) return;
+  autoRotate = false;
+}
+
+function setGestureStatus(text){
+  document.getElementById('gesturePocStatus').textContent = text;
+}
+
+function configureInteractionTask(config){
+  interactionTask = config || {enabled:false, expected_targets:[]};
+  // Every task starts from the same predictable camera framing. Gesture zoom
+  // and rotation from the previous task must not leak into the next one.
+  camera.zoom = 1;
+  camera.updateProjectionMatrix();
+  modelGroup.rotation.set(0, 0, 0);
+  autoRotate = false;
+  selectedTargets = new Set(interactionTask.selected_targets || []);
+  hoveredTarget = null; hoverStartedAt = 0;
+  draggingTool = false;
+  cutPathStarted = false;
+  restoreHighlights();
+  if(interactionTask.scene_state) setSceneState(interactionTask.scene_state);
+  prepareInteractionVisuals();
+  const expected = interactionTask.expected_targets || [];
+  if(expected.length === 1 && !interactionTask.interaction){
+    highlightTarget(expected[0]);
+  }
+  const cursor = document.getElementById('handCursor');
+  cursor.classList.toggle('active', !!interactionTask.enabled);
+  cursor.style.setProperty('--dwell', '0%');
+}
+
+function setInteractionHint(text){
+  const hint = document.getElementById('interactionHint');
+  hint.textContent = text || '';
+  hint.classList.toggle('active', !!text);
+}
+
+function clearCutGuide(){
+  if(cutGuideGroup && cutGuideGroup.parent) cutGuideGroup.parent.remove(cutGuideGroup);
+  cutGuideGroup = null;
+  setInteractionHint('');
+}
+
+function normaliseImportedModel(model, desiredSize){
+  const box = new THREE.Box3().setFromObject(model);
+  const size = box.getSize(new THREE.Vector3());
+  const center = box.getCenter(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.y, size.z) || 1;
+  const scale = desiredSize / maxDim;
+  model.scale.setScalar(scale);
+  // Root translation is not affected by the root's own scale.
+  model.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
+}
+
+function modelLocalPosition(object){
+  const world = object.getWorldPosition(new THREE.Vector3());
+  modelGroup.updateMatrixWorld(true);
+  return modelGroup.worldToLocal(world);
+}
+
+function loadDissectionAssets(){
+  if(!loadedModel) return;
+  const loader = new THREE.GLTFLoader();
+  if(!realisticScalpelGroup){
+    loader.load('static/models/Realistic_Scalpel.glb', gltf => {
+      realisticScalpelGroup = new THREE.Group();
+      normaliseImportedModel(gltf.scene, 2.15);
+      gltf.scene.traverse(o => {
+        o.userData.interactionTarget = 'Scalpel';
+        if(!o.isMesh || !o.material) return;
+        const materials = Array.isArray(o.material) ? o.material : [o.material];
+        const polished = materials.map(source => {
+          const material = source.clone();
+          if('metalness' in material) material.metalness = .82;
+          if('roughness' in material) material.roughness = .22;
+          return material;
+        });
+        o.material = Array.isArray(o.material) ? polished : polished[0];
+      });
+      realisticScalpelGroup.add(gltf.scene);
+      modelGroup.add(realisticScalpelGroup);
+      positionImportedDissectionAssets();
+    }, undefined, err => console.error('Realistic scalpel failed to load', err));
+  }
+  if(!importedCutawayGroup){
+    loader.load('static/models/Kidney_Cutaway.glb', gltf => {
+      importedCutawayGroup = new THREE.Group();
+      normaliseImportedModel(gltf.scene, 2.5);
+      importedCutawayGroup.add(gltf.scene);
+      importedCutawayGroup.visible = false;
+      modelGroup.add(importedCutawayGroup);
+
+      // The source GLB represents an opened anatomical half. A cloned half
+      // becomes the removed outer piece, allowing a clear two-piece result.
+      importedCutawayLidGroup = importedCutawayGroup.clone(true);
+      importedCutawayLidGroup.visible = false;
+      modelGroup.add(importedCutawayLidGroup);
+      positionImportedDissectionAssets();
+      if(currentSceneState === 'DISSECTION_DONE') setSceneState('DISSECTION_DONE');
+    }, undefined, err => console.error('Cutaway kidney failed to load', err));
+  }
+  // Returning to Biology after another subject clears modelGroup. Reattach
+  // cached imported assets so one consistent scalpel is reused everywhere.
+  if(realisticScalpelGroup && realisticScalpelGroup.parent !== modelGroup) modelGroup.add(realisticScalpelGroup);
+  if(importedCutawayGroup && importedCutawayGroup.parent !== modelGroup) modelGroup.add(importedCutawayGroup);
+  if(importedCutawayLidGroup && importedCutawayLidGroup.parent !== modelGroup) modelGroup.add(importedCutawayLidGroup);
+  positionImportedDissectionAssets();
+}
+
+function positionImportedDissectionAssets(){
+  if(!loadedModel) return;
+  loadedModel.updateMatrixWorld(true);
+  const authoredScalpel = loadedModel.getObjectByName('Scalpel');
+  const leftKidney = loadedModel.getObjectByName('Kidney_Left');
+  if(realisticScalpelGroup && authoredScalpel){
+    realisticScalpelGroup.position.copy(modelLocalPosition(authoredScalpel));
+    realisticScalpelGroup.position.y += .28;
+    // The supplied GLB is modelled in the XY plane (its blade thickness is
+    // along Z). Lay that complete model flat on the XZ tabletop; rotating only
+    // around Z made it edge-on, which looked like a few disconnected slivers.
+    realisticScalpelGroup.rotation.set(Math.PI / 2, 0, -.22);
+    realisticScalpelGroup.visible = currentSceneState !== 'DISSECTION_DONE';
+    authoredScalpel.visible = false;
+  }
+  if(importedCutawayGroup && leftKidney){
+    const kidneyPosition = modelLocalPosition(leftKidney);
+    importedCutawayGroup.position.copy(kidneyPosition);
+    importedCutawayGroup.position.y += .12;
+    // Imported cut face originally points along +Z. Rotate it onto the
+    // tabletop so the open anatomy faces upward (+Y).
+    importedCutawayGroup.rotation.set(-Math.PI / 2, 0, -.10);
+    if(importedCutawayLidGroup){
+      importedCutawayLidGroup.position.copy(kidneyPosition);
+      // Removed upper half stays on the empty front-left tray area, away
+      // from the nephron and other learning objects.
+      importedCutawayLidGroup.position.add(new THREE.Vector3(-.35, .10, 2.15));
+      // Opposite rotation places the removed piece cut-face downward.
+      importedCutawayLidGroup.rotation.set(Math.PI / 2, 0, .16);
+    }
+  }
+}
+
+function animateCutawayReveal(){
+  if(!importedCutawayGroup || !importedCutawayLidGroup || !loadedModel) return;
+  const leftKidney = loadedModel.getObjectByName('Kidney_Left');
+  if(!leftKidney) return;
+  const origin = modelLocalPosition(leftKidney);
+  const baseFinal = origin.clone().add(new THREE.Vector3(0, .12, 0));
+  const lidFinal = origin.clone().add(new THREE.Vector3(-.35, .10, 2.15));
+  const baseStartQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI * .55, 0));
+  const baseFinalQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, -.10));
+  const lidStartQ = baseStartQ.clone();
+  const lidFinalQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, .16));
+  const startedAt = performance.now();
+  const duration = 2100;
+
+  importedCutawayGroup.visible = true;
+  importedCutawayLidGroup.visible = true;
+  importedCutawayGroup.position.copy(origin);
+  importedCutawayLidGroup.position.copy(origin);
+  importedCutawayGroup.quaternion.copy(baseStartQ);
+  importedCutawayLidGroup.quaternion.copy(lidStartQ);
+
+  function frame(now){
+    const raw = Math.min(1, (now - startedAt) / duration);
+    const t = raw * raw * (3 - 2 * raw); // smoothstep easing
+    importedCutawayGroup.position.lerpVectors(origin, baseFinal, t);
+    importedCutawayLidGroup.position.lerpVectors(origin, lidFinal, t);
+    importedCutawayGroup.quaternion.slerpQuaternions(baseStartQ, baseFinalQ, t);
+    importedCutawayLidGroup.quaternion.slerpQuaternions(lidStartQ, lidFinalQ, t);
+    if(raw < 1) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+function prepareInteractionVisuals(){
+  clearCutGuide();
+  if(!loadedModel || !interactionTask.interaction) return;
+  if(interactionTask.interaction.type === 'precision_grip_dissection'){
+    dissectionAnimating = false;
+    dissectionCompletedPending = false;
+    loadDissectionAssets();
+    positionImportedDissectionAssets();
+    setInteractionHint('Place the cursor on the scalpel handle, then hold a thumb-index PRECISION GRIP');
+    return;
+  }
+  if(interactionTask.interaction.type !== 'grab_drag_path') return;
+  const spec = interactionTask.interaction;
+  const start = loadedModel.getObjectByName(spec.path_start || 'Cut_Path_Start');
+  const end = loadedModel.getObjectByName(spec.path_end || 'Cut_Path_End');
+  const tool = loadedModel.getObjectByName(spec.tool || 'Scalpel');
+  if(!start || !end || !tool) return;
+  loadedModel.updateMatrixWorld(true);
+
+  if(!tool.userData.labBaseScale) tool.userData.labBaseScale = tool.scale.clone();
+  tool.scale.copy(tool.userData.labBaseScale).multiplyScalar(2.0);
+  // Give the authored low-poly scalpel a recognisable surgical-tool finish.
+  tool.traverse(part => {
+    if(!part.isMesh || !part.material) return;
+    const materials = Array.isArray(part.material) ? part.material : [part.material];
+    const styled = materials.map(source => {
+      const material = source.clone();
+      const isBlade = /blade/i.test(part.name);
+      if(material.color) material.color.set(isBlade ? 0xdde8ee : 0x263746);
+      if('metalness' in material) material.metalness = isBlade ? .95 : .55;
+      if('roughness' in material) material.roughness = isBlade ? .16 : .42;
+      return material;
+    });
+    part.material = Array.isArray(part.material) ? styled : styled[0];
+  });
+  highlightTarget(spec.tool || 'Scalpel');
+
+  const a = start.getWorldPosition(new THREE.Vector3());
+  const b = end.getWorldPosition(new THREE.Vector3());
+  cutGuideGroup = new THREE.Group();
+  // WebGL ignores LineBasic/LineDashedMaterial linewidth on most Windows
+  // drivers. A tube stays thick, and depthTest:false keeps the guide visible
+  // even when the authored helper nodes sit just inside the kidney mesh.
+  const guideCurve = new THREE.LineCurve3(a, b);
+  const guideGeometry = new THREE.TubeGeometry(guideCurve, 24, .055, 10, false);
+  const guideMaterial = new THREE.MeshBasicMaterial({
+    color:0xffe66d, transparent:true, opacity:.95, depthTest:false, depthWrite:false
+  });
+  const line = new THREE.Mesh(guideGeometry, guideMaterial);
+  line.renderOrder = 1000;
+  cutGuideGroup.add(line);
+  const markerGeometry = new THREE.SphereGeometry(.16, 24, 16);
+  const startMarker = new THREE.Mesh(markerGeometry, new THREE.MeshBasicMaterial({
+    color:0x19ff72, depthTest:false, depthWrite:false
+  }));
+  const endMarker = new THREE.Mesh(markerGeometry, new THREE.MeshBasicMaterial({
+    color:0xff244d, depthTest:false, depthWrite:false
+  }));
+  startMarker.position.copy(a); endMarker.position.copy(b);
+  startMarker.renderOrder = 1001; endMarker.renderOrder = 1001;
+  cutGuideGroup.add(startMarker, endMarker);
+  // Guide points are world-space, so convert them before parenting to the
+  // rotating model group. It will now remain locked to the kidney/table.
+  cutGuideGroup.children.forEach(child => child.position.copy(modelGroup.worldToLocal(child.position.clone())));
+  modelGroup.add(cutGuideGroup);
+  setInteractionHint('1. Move the cursor onto the highlighted scalpel  2. Hold GRAB  3. Follow the yellow guide');
+}
+
+function setObjectVisible(name, visible){
+  const obj = loadedModel && loadedModel.getObjectByName(name);
+  if(obj) obj.visible = visible;
+}
+
+function setSceneState(state, animateTransition=false){
+  if(!loadedModel) return;
+  currentSceneState = state;
+  const cutawayRoots = ['Cortex', 'Medulla', 'Pelvis'];
+  const rightAssembly = loadedModel.getObjectByName('Kidney_Right_Assembly');
+  const scalpel = loadedModel.getObjectByName('Scalpel');
+
+  setObjectVisible('Label_Cutaway', false);
+  setObjectVisible('Kidney_Left_Assembly', state !== 'DISSECTION_DONE');
+  setObjectVisible('Kidney_Right_Assembly', true);
+
+  cutawayRoots.forEach(name => {
+    const obj = loadedModel.getObjectByName(name);
+    if(!obj) return;
+    if(obj.userData.labOriginalX === undefined) obj.userData.labOriginalX = obj.position.x;
+    obj.position.x = state === 'DISSECTION_DONE' ? -3.0 : obj.userData.labOriginalX;
+    obj.visible = state === 'DISSECTION_DONE' && !importedCutawayGroup;
+  });
+
+  if(scalpel){
+    if(!scalpel.userData.labStartPosition){
+      scalpel.userData.labStartPosition = scalpel.position.clone();
+    }
+    if(state !== 'DISSECTION_DONE'){
+      scalpel.position.copy(scalpel.userData.labStartPosition);
+      scalpel.visible = false;
+    } else {
+      scalpel.visible = false;
+    }
+  }
+  if(state === 'DISSECTION_READY'){
+    if(realisticScalpelGroup) realisticScalpelGroup.visible = true;
+    if(importedCutawayGroup) importedCutawayGroup.visible = false;
+    if(importedCutawayLidGroup) importedCutawayLidGroup.visible = false;
+  } else if(state === 'DISSECTION_DONE'){
+    if(realisticScalpelGroup) realisticScalpelGroup.visible = false;
+    if(importedCutawayGroup) importedCutawayGroup.visible = true;
+    if(importedCutawayLidGroup) importedCutawayLidGroup.visible = true;
+    positionImportedDissectionAssets();
+    if(animateTransition) animateCutawayReveal();
+  } else {
+    if(realisticScalpelGroup) realisticScalpelGroup.visible = true;
+    if(importedCutawayGroup) importedCutawayGroup.visible = false;
+    if(importedCutawayLidGroup) importedCutawayLidGroup.visible = false;
+  }
+}
+
+function namedTargetForObject(obj){
+  const expected = interactionTask.expected_targets || [];
+  let node = obj;
+  while(node){
+    if(node.userData && node.userData.interactionTarget) return node.userData.interactionTarget;
+    if(expected.includes(node.name)) return node.name;
+    node = node.parent;
+  }
+  node = obj;
+  while(node){
+    const match = expected.find(name => node.name === name || node.name.startsWith(name + '.'));
+    if(match) return match;
+    node = node.parent;
+  }
+  return null;
+}
+
+function meshesForTarget(target){
+  if(!loadedModel) return [];
+  const root = loadedModel.getObjectByName(target);
+  if(!root) return [];
+  const meshes=[];
+  root.traverse(o => { if(o.isMesh) meshes.push(o); });
+  if(root.isMesh && !meshes.includes(root)) meshes.push(root);
+  return meshes;
+}
+
+function restoreHighlights(){
+  originalMaterials.forEach((material, mesh) => { mesh.material = material; });
+  originalMaterials.clear();
+}
+
+function highlightTarget(target, selected=false){
+  restoreHighlights();
+  if(!target) return;
+  meshesForTarget(target).forEach(mesh => {
+    originalMaterials.set(mesh, mesh.material);
+    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    const clones = mats.map(m => {
+      const c=m.clone();
+      if(c.emissive){ c.emissive.set(selected ? 0x22cc77 : 0xffb52e); c.emissiveIntensity=0.85; }
+      else { c.color = c.color.clone().lerp(new THREE.Color(selected ? 0x22cc77 : 0xffb52e), .45); }
+      return c;
+    });
+    mesh.material = Array.isArray(mesh.material) ? clones : clones[0];
+  });
+}
+
+function updateInteractionPointer(x, y, gesture, dx, dy){
+  if(!interactionTask.enabled || !loadedModel) return null;
+  if(x === null || y === null){
+    virtualPointer.x = Math.max(0, Math.min(1, virtualPointer.x + (dx || 0) * 1.8));
+    virtualPointer.y = Math.max(0, Math.min(1, virtualPointer.y + (dy || 0) * 1.8));
+  } else {
+    virtualPointer.x=x; virtualPointer.y=y;
+  }
+  const cursor=document.getElementById('handCursor');
+  cursor.style.left=(virtualPointer.x*100)+'%'; cursor.style.top=(virtualPointer.y*100)+'%';
+  pointerNdc.set(virtualPointer.x*2-1, -(virtualPointer.y*2-1));
+  raycaster.setFromCamera(pointerNdc, camera);
+  const hitRoots = [loadedModel];
+  if(realisticScalpelGroup && realisticScalpelGroup.visible) hitRoots.push(realisticScalpelGroup);
+  const hits=raycaster.intersectObjects(hitRoots, true);
+  // Some labelled structures, including the renal artery, sit behind the
+  // visible kidney surface. Select the first ray hit that maps to an expected
+  // semantic target instead of stopping at an unrelated front-most mesh.
+  const target=hits.map(hit => namedTargetForObject(hit.object)).find(Boolean) || null;
+
+  if(interactionTask.interaction && interactionTask.interaction.type === 'grab_drag_path'){
+    return updateGrabDragPath(gesture, target);
+  }
+  if(interactionTask.interaction && interactionTask.interaction.type === 'precision_grip_dissection'){
+    return updatePrecisionGripDissection(gesture, target);
+  }
+
+  cursor.classList.toggle('hovering', !!target);
+  const now=performance.now();
+  if(target !== hoveredTarget){
+    hoveredTarget=target; hoverStartedAt=now;
+    const soleExpected = (interactionTask.expected_targets || []).length === 1
+      ? interactionTask.expected_targets[0] : null;
+    highlightTarget(target || soleExpected, selectedTargets.has(target));
+  }
+  const requiredGesture = interactionTask.expected_gesture || 'point';
+  if(gesture !== requiredGesture || !target){
+    hoverStartedAt=now; cursor.style.setProperty('--dwell','0%'); return null;
+  }
+  const dwell=Math.max(250, interactionTask.dwell_ms || 900);
+  const progress=Math.min(1, (now-hoverStartedAt)/dwell);
+  cursor.style.setProperty('--dwell',(progress*100)+'%');
+  if(progress < 1 || now-lastSelectionAt < 700) return null;
+  lastSelectionAt=now; hoverStartedAt=now;
+  const expectedOrder = interactionTask.expected_targets || [];
+  if(interactionTask.selection_mode === 'sequence'){
+    const nextTarget = expectedOrder[selectedTargets.size];
+    if(target !== nextTarget){
+      showInteractionFeedback('Follow the requested order. Next: ' + nextTarget, false);
+      return {status:'wrong', target:'OUT_OF_ORDER:' + target, complete:false,
+              selected_targets:Array.from(selectedTargets)};
+    }
+  }
+  selectedTargets.add(target); highlightTarget(target, true);
+  const complete=expectedOrder.every(t => selectedTargets.has(t));
+  showInteractionFeedback(complete ? 'Correct — both kidneys selected!' : 'Good. Now point to the other kidney.', true);
+  return {status:'selected', target:target, complete:complete,
+          selected_targets:Array.from(selectedTargets)};
+}
+
+function updatePrecisionGripDissection(gesture, target){
+  const cursor = document.getElementById('handCursor');
+  if(dissectionCompletedPending){
+    dissectionCompletedPending = false;
+    return {status:'selected', target:'Scalpel', complete:true};
+  }
+  if(dissectionAnimating) return null;
+  const now = performance.now();
+  const onScalpel = gesture === 'pinch' && target === 'Scalpel';
+  cursor.classList.toggle('hovering', onScalpel);
+  if(target !== hoveredTarget){
+    hoveredTarget = target;
+    hoverStartedAt = now;
+  }
+  if(!onScalpel){
+    hoverStartedAt = now;
+    cursor.style.setProperty('--dwell','0%');
+    return null;
+  }
+  setInteractionHint('PRECISION GRAB detected — hold steady while the scalpel is secured');
+  const dwell = Math.max(700, interactionTask.dwell_ms || 1100);
+  const progress = Math.min(1, (now - hoverStartedAt) / dwell);
+  cursor.style.setProperty('--dwell', (progress * 100) + '%');
+  if(progress < 1) return null;
+  cursor.style.setProperty('--dwell','0%');
+  startAutomaticDissection();
+  return null;
+}
+
+function startAutomaticDissection(){
+  if(dissectionAnimating || !realisticScalpelGroup || !loadedModel) return;
+  const start = loadedModel.getObjectByName('Cut_Path_Start');
+  const end = loadedModel.getObjectByName('Cut_Path_End');
+  if(!start || !end) return;
+  dissectionAnimating = true;
+  clearCutGuide();
+  setInteractionHint('Guided longitudinal cut in progress...');
+  const a = start.getWorldPosition(new THREE.Vector3());
+  const b = end.getWorldPosition(new THREE.Vector3());
+  const localA = modelGroup.worldToLocal(a.clone());
+  const localB = modelGroup.worldToLocal(b.clone());
+  const focus = a.clone().lerp(b, .5);
+  const cameraStartPosition = camera.position.clone();
+  const cameraStartQuaternion = camera.quaternion.clone();
+  const cameraStartZoom = camera.zoom;
+  const focusCamera = camera.clone();
+  focusCamera.lookAt(focus);
+  const focusQuaternion = focusCamera.quaternion.clone();
+  const initial = realisticScalpelGroup.position.clone();
+  const startedAt = performance.now();
+  const duration = 3200;
+  function step(now){
+    const t = Math.min(1, (now - startedAt) / duration);
+    const cameraT = Math.min(1, t / .22);
+    camera.zoom = THREE.MathUtils.lerp(cameraStartZoom, 2.15, cameraT);
+    camera.quaternion.slerpQuaternions(cameraStartQuaternion, focusQuaternion, cameraT);
+    camera.updateProjectionMatrix();
+    let position;
+    if(t < .22){
+      position = initial.clone().lerp(localA, t / .22);
+    } else {
+      const cutT = (t - .22) / .78;
+      position = localA.clone().lerp(localB, cutT);
+      position.y += Math.sin(cutT * Math.PI) * .08;
+    }
+    realisticScalpelGroup.position.copy(position);
+    realisticScalpelGroup.rotation.z = -.35 + Math.sin(t * Math.PI) * .12;
+    if(t < 1){ requestAnimationFrame(step); return; }
+    setSceneState('DISSECTION_DONE', true);
+    setInteractionHint('Dissection complete — the cutaway kidney is now visible');
+    showInteractionFeedback('Longitudinal dissection complete.', true);
+    // Hold the close-up briefly so the learner can see the cutaway result,
+    // then restore the standard task camera before advancing.
+    setTimeout(() => {
+      camera.position.copy(cameraStartPosition);
+      camera.quaternion.copy(cameraStartQuaternion);
+      camera.zoom = cameraStartZoom;
+      camera.updateProjectionMatrix();
+      dissectionAnimating = false;
+      dissectionCompletedPending = true;
+    }, 1900);
+  }
+  requestAnimationFrame(step);
+}
+
+function updateGrabDragPath(gesture, target){
+  const spec = interactionTask.interaction || {};
+  const tool = loadedModel.getObjectByName(spec.tool || 'Scalpel');
+  const start = loadedModel.getObjectByName(spec.path_start || 'Cut_Path_Start');
+  const end = loadedModel.getObjectByName(spec.path_end || 'Cut_Path_End');
+  if(!tool || !start || !end) return null;
+
+  const now = performance.now();
+  if(gesture === 'grab') lastGrabAt = now;
+
+  // Raycasting a thin blade is unnecessarily unforgiving. Also accept a
+  // cursor that is visually close to the projected centre of the scalpel.
+  const projectedTool = tool.getWorldPosition(new THREE.Vector3()).project(camera);
+  const toolScreenX = (projectedTool.x + 1) * .5;
+  const toolScreenY = (1 - projectedTool.y) * .5;
+  const cursorNearTool = Math.hypot(
+    virtualPointer.x - toolScreenX, virtualPointer.y - toolScreenY
+  ) < .15;
+
+  // Camera gesture recognition can flicker for a few frames. Once picked up,
+  // retain the drag briefly instead of dropping the scalpel immediately.
+  if(gesture !== 'grab' && (!draggingTool || now - lastGrabAt > 1400)){
+    draggingTool = false;
+    setInteractionHint('Move the cursor onto the highlighted scalpel, then hold GRAB');
+    return null;
+  }
+  if(!draggingTool && target !== (spec.tool || 'Scalpel') && !cursorNearTool){
+    setInteractionHint('GRAB is detected — now place the cursor directly over the scalpel');
+    return null;
+  }
+  draggingTool = true;
+  setInteractionHint('Scalpel grabbed — keep holding GRAB and trace from green to red');
+
+  const toolWorld = tool.getWorldPosition(new THREE.Vector3());
+  const normal = camera.getWorldDirection(new THREE.Vector3());
+  const dragPlane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, toolWorld);
+  const hitPoint = new THREE.Vector3();
+  if(!raycaster.ray.intersectPlane(dragPlane, hitPoint)) return null;
+  tool.parent.worldToLocal(hitPoint);
+  tool.position.copy(hitPoint);
+
+  const toolNow = tool.getWorldPosition(new THREE.Vector3());
+  const startWorld = start.getWorldPosition(new THREE.Vector3());
+  const endWorld = end.getWorldPosition(new THREE.Vector3());
+  const guide = endWorld.clone().sub(startWorld);
+  const total = Math.max(guide.length(), 0.001);
+  const along = toolNow.clone().sub(startWorld).dot(guide.clone().normalize());
+  const progress = Math.max(0, Math.min(1, along / total));
+  const closest = startWorld.clone().add(guide.clone().multiplyScalar(progress));
+  const lateral = toolNow.distanceTo(closest);
+
+  if(toolNow.distanceTo(startWorld) < total * 0.42) cutPathStarted = true;
+  const minimum = spec.minimum_progress || 0.8;
+  const complete = cutPathStarted && progress >= minimum && lateral < total * 0.45;
+  const cursor = document.getElementById('handCursor');
+  cursor.style.setProperty('--dwell', (progress * 100) + '%');
+  if(!complete) return null;
+
+  draggingTool = false;
+  clearCutGuide();
+  setSceneState(interactionTask.success_state || 'DISSECTION_DONE');
+  showInteractionFeedback('Good cut — one kidney now shows its internal structure.', true);
+  return {status:'selected', target:spec.tool || 'Scalpel', complete:true};
+}
+
+function showInteractionFeedback(text, success){
+  const el=document.getElementById('interactionFeedback');
+  el.textContent=text; el.classList.toggle('error', !success); el.classList.add('active');
+  clearTimeout(el._hideTimer); el._hideTimer=setTimeout(() => el.classList.remove('active'), 2200);
+}
+
+/* =========================================================
+   SEGMENT/TASK INFO - task_engine.py se aata hai
+========================================================= */
+function setSegmentInfo(title){
+  document.getElementById('segmentTitle').textContent = title;
+}
+
+function setTaskPosition(current, total){
+  document.getElementById('taskPosition').textContent = `TASK ${current} OF ${total}`;
+}
+
+function setLearningState(text, tone){
+  const el = document.getElementById('learningState');
+  el.textContent = String(text || 'PREPARING').toUpperCase();
+  el.className = tone || '';
+}
+
+/* =========================================================
+   TEACHER OVERLAY - static avatar, sirf text badalta hai.
+   app_window.py in dono jagah se call karta hai:
+     1. Naya task assign hone par (task ka prompt)
+     2. Confusion check-in par (avatar ka sawaal, jaise "Do you know
+        about the aorta?")
+   Movement/animation JAAN-BOOJH KAR nahi hai - Namya ne yahi maanga.
+========================================================= */
+function showTeacherPrompt(text){
+  document.getElementById('teacherBubble').textContent = text;
+  document.getElementById('teacherOverlay').classList.add('active');
+}
+
+function hideTeacherPrompt(){
+  document.getElementById('teacherOverlay').classList.remove('active');
+}
+
+initThree();
+</script>
+</body>
+</html>

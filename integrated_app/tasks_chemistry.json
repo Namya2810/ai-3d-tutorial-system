@@ -1,0 +1,198 @@
+{
+  "_note": "Auto-generated from Tasks_and_Que.xlsx. animation fields are null placeholders - Blender team to fill in real action names once 3D model is ready. Single segment per subject assumed (no sub-grouping) - split further if needed.",
+  "main_tutorial_id": "acid_base_titration",
+  "segments": [
+    {
+      "id": "seg_chem",
+      "title": "Chemistry - Acid-Base Titration",
+      "tasks": [
+        {
+          "task_id": "chem_t1_introduction_to_titration",
+          "type": "gesture_task",
+          "prompt": "Point to the burette, pipette, and conical flask one by one.",
+          "expected_gesture": "point",
+          "animation": null,
+          "mini_tutorial_id": "mini_chem_introduction_to_titration",
+          "mini_tutorial_title": "Introduction to Titration",
+          "mini_tutorial_video": "static/mini_tutorials/chem/Introduction to Titration.mp4"
+        },
+        {
+          "task_id": "chem_t2_acid_base_titration",
+          "type": "voice_question",
+          "prompt": "What is acid-base titration? Why is it performed? Which solutions react?",
+          "expected_keywords": [
+            "acid",
+            "base",
+            "titration",
+            "neutralization",
+            "concentration",
+            "reaction"
+          ],
+          "min_keyword_matches": 1,
+          "concept_hint": "Acid-base titration determines concentration via neutralization between an acid and a base.",
+          "animation": null,
+          "mini_tutorial_id": "mini_chem_acid_base_titration",
+          "mini_tutorial_title": "Acid Base Titration",
+          "mini_tutorial_video": "static/mini_tutorials/chem/Acid Base Titration.mp4"
+        },
+        {
+          "task_id": "chem_t3_rule_1_of_titration",
+          "type": "gesture_task",
+          "prompt": "Point to the burette, then mimic a rinsing/tilting motion.",
+          "expected_gesture": "grab",
+          "animation": null,
+          "mini_tutorial_id": "mini_chem_rule_1_of_titration",
+          "mini_tutorial_title": "Rule 1 of Titration",
+          "mini_tutorial_video": "static/mini_tutorials/chem/Rule 1 of Titration.mp4"
+        },
+        {
+          "task_id": "chem_t4_burette_demonstration",
+          "type": "gesture_task",
+          "prompt": "Point to the burette and fill it with the correct solution.",
+          "expected_gesture": "grab",
+          "animation": null,
+          "mini_tutorial_id": "mini_chem_burette_demonstration",
+          "mini_tutorial_title": "Burette Demonstration",
+          "mini_tutorial_video": "static/mini_tutorials/chem/Burette Demonstration.mp4"
+        },
+        {
+          "task_id": "chem_t5_pipette_demonstration",
+          "type": "voice_question",
+          "prompt": "What is the purpose of a pipette? Why is it accurate?",
+          "expected_keywords": [
+            "pipette",
+            "measure",
+            "accurate",
+            "volume",
+            "measure",
+            "liquid"
+          ],
+          "min_keyword_matches": 1,
+          "concept_hint": "A pipette accurately measures and transfers a fixed volume of liquid.",
+          "animation": null,
+          "mini_tutorial_id": "mini_chem_pipette_demonstration",
+          "mini_tutorial_title": "Pipette Demonstration",
+          "mini_tutorial_video": "static/mini_tutorials/chem/Pipette Demonstration.mp4"
+        },
+        {
+          "task_id": "chem_t6_conical_flask",
+          "type": "gesture_task",
+          "prompt": "Point to the conical flask and perform a swirl gesture.",
+          "expected_gesture": "point",
+          "animation": null,
+          "mini_tutorial_id": "mini_chem_conical_flask",
+          "mini_tutorial_title": "Conical Flask",
+          "mini_tutorial_video": "static/mini_tutorials/chem/Conical Flask.mp4"
+        },
+        {
+          "task_id": "chem_t7_phenolphthalein_indicator",
+          "type": "gesture_task",
+          "prompt": "Select the correct indicator colour in a basic solution from the colour options shown.",
+          "expected_gesture": "pinch",
+          "animation": null,
+          "mini_tutorial_id": "mini_chem_phenolphthalein_indicator",
+          "mini_tutorial_title": "Phenolphthalein Indicator",
+          "mini_tutorial_video": "static/mini_tutorials/chem/Phenolphthalein Indicator.mp4"
+        },
+        {
+          "task_id": "chem_t8_filling_the_burette",
+          "type": "gesture_task",
+          "prompt": "Demonstrate filling the burette and tapping out any air bubbles.",
+          "expected_gesture": "grab",
+          "animation": null,
+          "mini_tutorial_id": "mini_chem_filling_the_burette",
+          "mini_tutorial_title": "Filling the Burette",
+          "mini_tutorial_video": "static/mini_tutorials/chem/Filling the Burette.mp4"
+        },
+        {
+          "task_id": "chem_t9_pipetting_the_sample",
+          "type": "gesture_task",
+          "prompt": "Use the pipette to draw up the correct sample volume.",
+          "expected_gesture": "pinch",
+          "animation": null,
+          "mini_tutorial_id": "mini_chem_pipetting_the_sample",
+          "mini_tutorial_title": "Pipetting the Sample",
+          "mini_tutorial_video": "static/mini_tutorials/chem/Pipetting the Sample.mp4"
+        },
+        {
+          "task_id": "chem_t10_starting_the_titration",
+          "type": "gesture_task",
+          "prompt": "Begin adding titrant drop by drop while performing the swirl gesture.",
+          "expected_gesture": "point",
+          "animation": null,
+          "mini_tutorial_id": "mini_chem_starting_the_titration",
+          "mini_tutorial_title": "Starting the Titration",
+          "mini_tutorial_video": "static/mini_tutorials/chem/Starting the Titration.mp4"
+        },
+        {
+          "task_id": "chem_t11_endpoint_detection",
+          "type": "gesture_task",
+          "prompt": "Stop the titration when the correct colour appears.",
+          "expected_gesture": "pinch",
+          "animation": null,
+          "mini_tutorial_id": "mini_chem_endpoint_detection",
+          "mini_tutorial_title": "Endpoint Detection",
+          "mini_tutorial_video": "static/mini_tutorials/chem/Endpoint Detection.mp4"
+        },
+        {
+          "task_id": "chem_t12_colour_change",
+          "type": "gesture_task",
+          "prompt": "Select the final colour from multiple options.",
+          "expected_gesture": "pinch",
+          "animation": null,
+          "mini_tutorial_id": "mini_chem_colour_change",
+          "mini_tutorial_title": "Colour Change",
+          "mini_tutorial_video": "static/mini_tutorials/chem/Colour Change.mp4"
+        },
+        {
+          "task_id": "chem_t13_reading_the_burette",
+          "type": "gesture_task",
+          "prompt": "Point to the correct meniscus reading position at eye level.",
+          "expected_gesture": "point",
+          "animation": null,
+          "mini_tutorial_id": "mini_chem_reading_the_burette",
+          "mini_tutorial_title": "Reading the Burette",
+          "mini_tutorial_video": "static/mini_tutorials/chem/Reading the Burette.mp4"
+        },
+        {
+          "task_id": "chem_t14_observation_table",
+          "type": "voice_question",
+          "prompt": "What values are recorded? Why take multiple readings?",
+          "expected_keywords": [
+            "reading",
+            "burette",
+            "volume",
+            "titre",
+            "record",
+            "multiple",
+            "average"
+          ],
+          "min_keyword_matches": 1,
+          "concept_hint": "Burette readings and titre values are recorded across multiple trials for an accurate average.",
+          "animation": null,
+          "mini_tutorial_id": "mini_chem_observation_table",
+          "mini_tutorial_title": "Observation Table",
+          "mini_tutorial_video": "static/mini_tutorials/chem/Observation Table.mp4"
+        },
+        {
+          "task_id": "chem_t15_titration_calculations",
+          "type": "voice_question",
+          "prompt": "How is the titre value calculated from the burette readings?",
+          "animation": null,
+          "mini_tutorial_id": "mini_chem_titration_calculations",
+          "mini_tutorial_title": "Titration Calculations",
+          "mini_tutorial_video": "static/mini_tutorials/chem/Titration Calculations.mp4",
+          "expected_keywords": [
+            "titre",
+            "final reading",
+            "initial reading",
+            "subtract",
+            "difference"
+          ],
+          "min_keyword_matches": 1,
+          "concept_hint": "Titre value = final burette reading minus initial burette reading."
+        }
+      ]
+    }
+  ]
+}
