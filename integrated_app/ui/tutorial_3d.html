@@ -90,6 +90,15 @@
     color:#071018; background:rgba(255,230,109,.96); border:2px solid #fff2a8;
     font:700 13px var(--font-mono); text-align:center; pointer-events:none; }
   #interactionHint.active{ display:block; }
+  #sequenceChecklist{position:absolute;top:126px;right:18px;width:230px;display:none;padding:12px 14px;border-radius:12px;color:var(--text);background:rgba(12,18,27,.92);border:1px solid #314258;font:600 11px var(--font-mono);pointer-events:none;}
+  #sequenceChecklist.active{display:block;}
+  #sequenceChecklist .checkTitle{color:var(--cyan);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;}
+  #sequenceChecklist .checkItem{padding:5px 0;color:var(--text-muted);}
+  #sequenceChecklist .checkItem.current{color:#FFE66D;}
+  #sequenceChecklist .checkItem.done{color:#78e7a5;}
+  #guidanceArrow{position:absolute;display:none;z-index:8;color:#FFE66D;font:900 52px/1 sans-serif;text-shadow:0 0 8px #111,0 0 20px #FFE66D;pointer-events:none;transform:translate(-50%,-100%);animation:guideBounce .55s ease-in-out infinite alternate;}
+  #guidanceArrow.active{display:block;}
+  @keyframes guideBounce{from{margin-top:-8px;opacity:.72}to{margin-top:7px;opacity:1}}
   .spinner{ width:28px; height:28px; border:2px solid #232F40; border-top-color:var(--cyan); border-radius:50%; animation:spin 0.8s linear infinite; }
   @keyframes spin{ to{ transform:rotate(360deg); } }
 </style>
@@ -113,6 +122,8 @@
   <div id="handCursor"></div>
   <div id="interactionFeedback"></div>
   <div id="interactionHint"></div>
+  <div id="sequenceChecklist"></div>
+  <div id="guidanceArrow">&#8595;</div>
 </div>
 
 <script src="static/js/three.min.js"></script>
@@ -160,7 +171,7 @@ function initAnaglyph(){
   // The laboratory scene is roughly ten Three.js units wide. A real-world
   // 64 mm eye separation is therefore too subtle here; this calibrated
   // separation creates visible depth disparity through red/cyan glasses.
-  stereoCamera.eyeSep = 0.22;
+  stereoCamera.eyeSep = 0.36;
   anaglyphTargetL = new THREE.WebGLRenderTarget(1, 1, {minFilter:THREE.LinearFilter, magFilter:THREE.NearestFilter});
   anaglyphTargetR = new THREE.WebGLRenderTarget(1, 1, {minFilter:THREE.LinearFilter, magFilter:THREE.NearestFilter});
   anaglyphMaterial = new THREE.ShaderMaterial({
@@ -218,6 +229,7 @@ function initThree(){
 
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+  camera.focus = 8.0;
   // Elevated three-quarter view: the current Exhibit_Base reads as a lab
   // tabletop and both kidneys remain easy to target with the hand cursor.
   camera.position.set(0, 9.0, 7.5);
@@ -466,6 +478,44 @@ function configureInteractionTask(config){
   const cursor = document.getElementById('handCursor');
   cursor.classList.toggle('active', !!interactionTask.enabled);
   cursor.style.setProperty('--dwell', '0%');
+  renderSequenceChecklist();
+}
+
+function displayTargetName(name){
+  return String(name || '').replaceAll('_',' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function renderSequenceChecklist(){
+  const panel=document.getElementById('sequenceChecklist');
+  const targets=interactionTask.expected_targets || [];
+  if(!['sequence','ordered'].includes(interactionTask.selection_mode) || targets.length < 2){panel.classList.remove('active');panel.innerHTML='';return;}
+  let html='<div class="checkTitle">Complete in order</div>';
+  targets.forEach((target,index) => {
+    const done=selectedTargets.has(target), current=!done && index===selectedTargets.size;
+    html += `<div class="checkItem ${done?'done':(current?'current':'')}">${done?'&#10003;':(current?'&#10148;':'&#9675;')} ${displayTargetName(target)}</div>`;
+  });
+  panel.innerHTML=html;panel.classList.add('active');
+}
+
+function worldScreenPosition(target){
+  const meshes=meshesForTarget(target);if(!meshes.length)return null;
+  const box=new THREE.Box3();meshes.forEach(mesh=>box.expandByObject(mesh));
+  const p=box.getCenter(new THREE.Vector3()).project(camera);
+  return {x:(p.x*.5+.5)*100,y:(-.5*p.y+.5)*100};
+}
+
+function showTargetGuidance(target,durationMs=2800){
+  const arrow=document.getElementById('guidanceArrow'),pos=worldScreenPosition(target);if(!pos)return;
+  highlightTarget(target);arrow.style.left=pos.x+'%';arrow.style.top=pos.y+'%';arrow.classList.add('active');
+  clearTimeout(arrow._hideTimer);arrow._hideTimer=setTimeout(()=>{arrow.classList.remove('active');if(hoveredTarget)highlightTarget(hoveredTarget,selectedTargets.has(hoveredTarget));else restoreHighlights();},Math.max(1000,durationMs));
+}
+
+function completeInteractionUI(){
+  interactionTask.enabled=false;
+  document.getElementById('handCursor').classList.remove('active','hovering');
+  document.getElementById('sequenceChecklist').classList.remove('active');
+  document.getElementById('guidanceArrow').classList.remove('active');
+  setInteractionHint('');
 }
 
 function setInteractionHint(text){
@@ -830,17 +880,19 @@ function updateInteractionPointer(x, y, gesture, dx, dy){
   if(progress < 1 || now-lastSelectionAt < 700) return null;
   lastSelectionAt=now; hoverStartedAt=now;
   const expectedOrder = interactionTask.expected_targets || [];
-  if(interactionTask.selection_mode === 'sequence'){
+  if(['sequence','ordered'].includes(interactionTask.selection_mode)){
     const nextTarget = expectedOrder[selectedTargets.size];
     if(target !== nextTarget){
       showInteractionFeedback('Follow the requested order. Next: ' + nextTarget, false);
+      renderSequenceChecklist();
       return {status:'wrong', target:'OUT_OF_ORDER:' + target, complete:false,
               selected_targets:Array.from(selectedTargets)};
     }
   }
-  selectedTargets.add(target); highlightTarget(target, true);
+  selectedTargets.add(target); highlightTarget(target, true); renderSequenceChecklist();
   const complete=expectedOrder.every(t => selectedTargets.has(t));
-  showInteractionFeedback(complete ? 'Correct — both kidneys selected!' : 'Good. Now point to the other kidney.', true);
+  const remaining=expectedOrder.filter(t => !selectedTargets.has(t));
+  showInteractionFeedback(complete ? 'Task complete.' : `Good. ${remaining.length} target(s) remaining.`, true);
   return {status:'selected', target:target, complete:complete,
           selected_targets:Array.from(selectedTargets)};
 }

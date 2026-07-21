@@ -183,6 +183,7 @@ class MainWindow(QMainWindow):
         # Task flow state guards - taaki har _tick() pe dobara trigger na ho
         self._task_flow_started_for = None   # task_id jiske liye ASKING already trigger ho chuki hai
         self._gesture_mismatch_count = 0
+        self._wrong_target_count = 0
         self._mini_tutorial_open_for = None  # task_id jiske liye mini-tutorial page already khula hai
 
         # NAYA: har baar jab koi task "asked" hota hai (voice ya gesture),
@@ -416,6 +417,7 @@ class MainWindow(QMainWindow):
             return  # is task ke liye already ASK ho chuka hai
         self._task_flow_started_for = task["task_id"]
         self._gesture_mismatch_count = 0
+        self._wrong_target_count = 0
 
         if task["type"] == "voice_question":
             self.tutorial_page.set_learning_state("Teacher speaking", "speaking")
@@ -662,6 +664,7 @@ class MainWindow(QMainWindow):
             if getattr(event, "all_targets_complete", False):
                 self._stop_task_countdown()
                 self.prompt_banner.hide_banner()
+                self.tutorial_page.complete_interaction_ui()
                 self.tutorial_page.show_interaction_feedback(
                     task.get("success_message", "Correct! Moving to the next task."), True
                 )
@@ -671,9 +674,23 @@ class MainWindow(QMainWindow):
                 )
             elif target_id and target_id not in expected_targets:
                 self._gesture_mismatch_count += 1
+                self._wrong_target_count += 1
+                selected = list(getattr(event, "selected_targets", ()) or ())
+                if task.get("selection_mode") in ("sequence", "ordered"):
+                    guide_target = expected_targets[
+                        min(len(selected), len(expected_targets) - 1)
+                    ]
+                else:
+                    guide_target = next(
+                        (item for item in expected_targets if item not in selected),
+                        expected_targets[0],
+                    )
                 self.tutorial_page.show_interaction_feedback(
                     task.get("retry_message", "That is not the requested object. Try again."), False
                 )
+                if self._wrong_target_count >= 2:
+                    self.tutorial_page.show_target_guidance(guide_target)
+                    self._wrong_target_count = 0
                 if self._gesture_mismatch_count >= GESTURE_MISMATCH_LIMIT:
                     self._stop_task_countdown()
                     self.prompt_banner.hide_banner()
@@ -742,6 +759,7 @@ class MainWindow(QMainWindow):
     def _finish_success_transition(self):
         self._success_transition_in_progress = False
         self._task_flow_started_for = None
+        self.tutorial_page.refresh_task_ui()
         self._drive_task_flow()
 
     def _finish_failure_transition(self, generation=None):

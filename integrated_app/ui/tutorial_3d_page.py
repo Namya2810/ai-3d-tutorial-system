@@ -345,3 +345,22 @@ class Tutorial3DPage(QWidget):
         self.view.page().runJavaScript(
             f"showInteractionFeedback({json.dumps(text)}, {str(bool(success)).lower()});"
         )
+
+    def show_target_guidance(self, target, duration_ms=2800):
+        self.view.page().runJavaScript(
+            f"showTargetGuidance({json.dumps(target)}, {int(duration_ms)});"
+        )
+
+    def complete_interaction_ui(self):
+        self.view.page().runJavaScript("completeInteractionUI();")
+
+    def refresh_task_ui(self):
+        """Synchronise the WebGL banner immediately after engine advances."""
+        if self.task_engine.state == self.task_engine.STATE_DONE:
+            self.view.page().runJavaScript(
+                "completeInteractionUI(); setSegmentInfo('Session complete'); "
+                "setLearningState('Complete', 'success');"
+            )
+            return
+        self._last_shown_task_id = None
+        self._update_task_banner_and_animation()

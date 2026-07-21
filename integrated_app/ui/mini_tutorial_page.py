@@ -102,9 +102,7 @@ class MiniTutorialPage(QWidget):
 
         # Background classroom image - poore stage area ko fill karta hai
         self.background_label = QLabel(self)
-        self.background_label.setAlignment(
-            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
-        )
+        self.background_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.background_label.setMinimumHeight(360)
         self.background_label.setMinimumWidth(0)
         self.background_label.setSizePolicy(
@@ -217,7 +215,7 @@ class MiniTutorialPage(QWidget):
             scaled = self._bg_pixmap.scaled(
                 self.background_label.width(),
                 self.background_label.height(),
-                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.AspectRatioMode.KeepAspectRatioByExpanding,
                 Qt.TransformationMode.SmoothTransformation,
             )
             self.background_label.setPixmap(scaled)
@@ -234,7 +232,7 @@ class MiniTutorialPage(QWidget):
 
         label_w, label_h = self.background_label.width(), self.background_label.height()
         img_w, img_h = pm.width(), pm.height()
-        off_x = 0  # background artwork is intentionally left-aligned
+        off_x = (label_w - img_w) / 2
         off_y = (label_h - img_h) / 2
 
         box_x0 = off_x + BOX_FRACT["x0"] * img_w
