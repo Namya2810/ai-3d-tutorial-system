@@ -37,12 +37,16 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-# Blackboard box ka position, background image ke fraction mein (teeno
-# classroom images - bio/chem/phy - isi ek template se bane hain)
-# Inner edge of the rounded video panel in the 1600x900 classroom artwork.
-# These values deliberately exclude the white stroke and curved corners, so
-# the rectangular black video backdrop cannot spill over the frame.
-BOX_FRACT = {"x0": 0.427, "y0": 0.076, "x1": 0.635, "y1": 0.784}
+# Blackboard box position as fractions of each background image.  The three
+# classroom pictures look similar, but their panels are not pixel-identical
+# (the chemistry artwork is also 1280x720 while biology/physics are 1600x900).
+# Keeping separate measured inner rectangles prevents a tutorial from slowly
+# drifting right or covering a rounded corner when the subject changes.
+SUBJECT_BOX_FRACTS = {
+    "bio": {"x0": 0.420, "y0": 0.068, "x1": 0.624, "y1": 0.779},
+    "chem": {"x0": 0.406, "y0": 0.067, "x1": 0.631, "y1": 0.799},
+    "phy": {"x0": 0.426, "y0": 0.076, "x1": 0.636, "y1": 0.784},
+}
 
 # NOTE: task_engine.py ke "mini_tutorial_video" jaisa hi convention -
 # project ROOT ke relative path (CWD se resolve hota hai jab app chalti
@@ -235,10 +239,13 @@ class MiniTutorialPage(QWidget):
         off_x = (label_w - img_w) / 2
         off_y = (label_h - img_h) / 2
 
-        box_x0 = off_x + BOX_FRACT["x0"] * img_w
-        box_y0 = off_y + BOX_FRACT["y0"] * img_h
-        box_x1 = off_x + BOX_FRACT["x1"] * img_w
-        box_y1 = off_y + BOX_FRACT["y1"] * img_h
+        box = SUBJECT_BOX_FRACTS.get(
+            self._current_subject, SUBJECT_BOX_FRACTS["bio"]
+        )
+        box_x0 = off_x + box["x0"] * img_w
+        box_y0 = off_y + box["y0"] * img_h
+        box_x1 = off_x + box["x1"] * img_w
+        box_y1 = off_y + box["y1"] * img_h
         box_w = box_x1 - box_x0
         box_h = box_y1 - box_y0
         if box_w <= 0 or box_h <= 0:
