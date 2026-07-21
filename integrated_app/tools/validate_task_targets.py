@@ -66,6 +66,11 @@ def validate():
         tasks = [task for segment in payload.get("segments", []) for task in segment.get("tasks", [])]
         for task in tasks:
             checked += 1
+            if task.get("type") == "numeric_question":
+                if "expected_numeric_answer" not in task:
+                    errors.append(f"{task['task_id']}: numeric task has no expected answer")
+                if float(task.get("numeric_tolerance", 0)) <= 0:
+                    errors.append(f"{task['task_id']}: numeric task needs positive tolerance")
             targets = effective_targets(task, subject)
             if task.get("type") == "gesture_task" and not targets:
                 errors.append(f"{task['task_id']}: gesture task has no achievable target")

@@ -106,27 +106,28 @@ python main.py
 | Piece | Status |
 |---|---|
 | Face -> SessionState | Live, working (camera, MediaPipe) |
-| Gesture -> SessionState | Live, working - **camera se abhi**. Glove hardware (`gesture_sources.py` ka `GloveGestureSource`) ek ready stub hai; hardware aane par isi ke andar BLE code bharna hai, baaki kahin kuch badalna nahi padega |
+| Gesture -> SessionState | Live with camera and BLE glove. Firmware V3 sends five flex values, MPU6050 motion, BPM and recenter flags; V1/V2 packets remain supported |
 | 3D viewer engine | **PyOpenGL se Three.js/QWebEngineView pe migrate ho gaya** (`ui/tutorial_3d.html`) - purana `model_viewer.py` black-screen de raha tha, isolated POC mein fix karke yahan laaya gaya. Gesture->rotate/zoom/grab poora validated hai |
 | Voice help/repeat -> SessionState + **seedha mini-tutorial khulta hai** | Live, working (`app_window.py._check_voice_triggers`) |
 | SessionState -> confusion_engine **live** score | Working (avatar check-in trigger karne ke liye) |
 | SessionState -> confusion_engine **session-summary** score (mini-tutorials played included) | Working (Quiz difficulty ke liye - `compute_session_summary`) |
-| Main tutorial ko segments + mini-tutorials mein todna | Working **demo version** - abhi time-based auto-advance hai (`segments.json`, `segment_tracker.py`), real video/3D tutorial content aane par real timestamps daalne honge |
-| AI Avatar check-in (confusion detect hote hi "clear ho?" poochna) | **Trigger + poora voice conversation real hai** (`voice/avatar_checkin.py`) - sirf 3D avatar ka visual model abhi nahi hai, filhaal koi UI/model nahi dikhta jab wo bolta hai |
+| Main tutorial task flow + mini-tutorials | Task-completion state machine: correct response advances, wrong/timeout offers the matching mini-tutorial, then retries the same task |
+| AI teacher confusion check-in | Live teacher visual, spoken prompt, transcript, strict local Yes/No intent, clickable buttons and Y/N shortcuts; an ambiguous response never forces a tutorial |
 | Confusion score -> Quiz difficulty | Working (`generate_quiz` session-summary score pass karta hai) |
-| **Segment-weighted quiz questions** (jis segment ka mini-tut chala uske questions zyada) | Nahi bana - Quiz backend (`quiz_logic.py`) ko `segment_tracker.progress_summary()` jaisa data lekar per-subtopic weighting karni hogi. Ye agla backend kaam hai |
+| **Segment-weighted quiz questions** | Working from per-task mini-tutorial and confusion summaries |
 | Quiz score -> Student Profile | Working (login ke baad) |
 | Profile page | Embedded web page hai (Flask+Mongo), PyQt6 form nahi. Login/Signup/Profile display sab wahi se aata hai |
-| `expected_gesture` (wrong-gesture detection) | Abhi hamesha `None` hai - jab tutorial steps define ho, `tutorial_3d_page.py` ke `_on_tick()` mein pass karo |
-| Real 3D tutorial content + game-jaisa engaging feel | Abhi sirf ek placeholder `.glb` (beating heart) hai. Real content banne par `segments.json` aur is placeholder ko replace karna hai |
-| Video Player / Unity-exported tutorial | Nahi bana - is app ka approach hai live 3D model + gesture, video player nahi |
-| Dashboard (teacher view) | Nahi bana |
-| Gamified profile/dashboard (Meta/game jaisa) | Nahi bana - abhi plain stats hain |
+| Task gestures and target validation | Working; every gesture task has achievable named scene targets and startup/preflight validation |
+| 3D content | Biology kidney lab plus procedural Chemistry titration and Physics gearbox scenes are interactive; final art polish remains expandable |
+| Mini-tutorial player | Working with responsive uncropped video, replay/continue controls and single-audio ownership |
+| Dashboard/profile | Local persistent profile dashboard is served by Flask; login can be made mandatory with `ui.require_login` |
+| Hardware data | Raw versioned BLE packets are stored per session as ignored CSV files under `data/glove_sessions` |
 
 ## Next steps
 
 1. Quiz backend aur Profile backend chala ke, poora flow test karo:
    login -> 3D tutorial dekho/control karo -> voice se help maango -> quiz do -> profile mein score check karo.
-2. `confusion_engine.py` ke WEIGHTS ko apne real usage ke hisaab se tune karo.
-3. Jab tutorial steps ban jayein, `tutorial_3d_page.py` mein `expected_gesture` pass karna shuru karo taaki wrong-gesture signal bhi accurate ho.
-4. Baad mein: `train_emotion_model.py` jaisa ek Random Forest model banao jo `SessionState` ke features (emotion ratio, attention ratio, wrong gestures, help requests, quiz accuracy, response time) leke confusion label predict kare - `confusion_engine.compute()` ke andar isi se replace karo.
+2. Glove firmware upload ke baad straight/curled flex calibration values record karke firmware arrays update karo.
+3. `runtime_config.json` ke confusion/pulse thresholds ko pilot-session CSV data ke basis par tune karo.
+4. Final hardware acceptance test: BLE connect, recenter, every gesture, BPM contact, task completion and dashboard persistence.
+5. Enough labelled student sessions milne ke baad rule-based confusion score ko trained model se replace kar sakte ho.

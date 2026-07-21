@@ -3,12 +3,12 @@
 
   Runs on the ESP32 Dev Board in the glove. Reads 5 flex sensors (analog)
   the MPU6050 gyroscope and MAX30102 pulse sensor (I2C), packs them into
-  a 13-byte binary
-  packet, and streams it over BLE notifications ~30x/sec.
+  a versioned 15-byte binary packet, and streams it over BLE notifications
+  ~30x/sec.
 
   The packet format here MUST match PACKET_FORMAT in gesture_sources.py
-  ("<5B3hH" = 5 unsigned bytes + 3 signed int16 + BPM uint16,
-  little-endian). If you
+  ("<BB5B3hH" = version + flags + 5 unsigned bytes + 3 signed int16
+  + BPM uint16, little-endian). If you
   change one side, change the other.
 
   ---- Libraries needed (Arduino Library Manager / PlatformIO) ----
@@ -44,6 +44,8 @@
 #define BLE_DEVICE_NAME      "GestureGlove"
 #define SERVICE_UUID         "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
 #define CHARACTERISTIC_UUID  "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
+#define PACKET_VERSION       3
+#define FLAG_RECENTER        0x01
 
 // ---- Flex sensor analog pins: thumb, index, middle, ring, pinky ----
 const int FLEX_PINS[5] = {25, 33, 32, 35, 34};
@@ -68,6 +70,9 @@ byte bpmHistoryIndex = 0;
 unsigned long lastBeatAt = 0;
 BLECharacteristic *pCharacteristic;
 bool deviceConnected = false;
+unsigned long openHandStartedAt = 0;
+bool recenterLatched = false;
+const unsigned long RECENTER_HOLD_MS = 1500;
 
 class ServerCallbacks : public BLEServerCallbacks {
   void onConnect(BLEServer *pServer) override {
@@ -241,17 +246,38 @@ void loop() {
   int16_t pitch16 = (int16_t)(pitch * 100);
   int16_t roll16  = (int16_t)(roll * 100);
 
-  // ---- 3. MAX30102 -> smoothed heart rate (0 means unavailable/no contact) ----
+  // ---- 3. Hands-free recenter ----
+  // Hold an open, steady hand for 1.5 seconds. The event is sent once and
+  // latched until the hand leaves that pose, preventing repeated jumps.
+  bool openHand = true;
+  for (int i = 0; i < 5; i++) openHand = openHand && flexPct[i] < 28;
+  bool steadyHand = abs(yaw) < 5.0f && abs(pitch) < 5.0f && abs(roll) < 5.0f;
+  uint8_t flags = 0;
+  if (openHand && steadyHand) {
+    if (openHandStartedAt == 0) openHandStartedAt = millis();
+    if (!recenterLatched && millis() - openHandStartedAt >= RECENTER_HOLD_MS) {
+      flags |= FLAG_RECENTER;
+      recenterLatched = true;
+      Serial.println("RECENTER event sent");
+    }
+  } else {
+    openHandStartedAt = 0;
+    recenterLatched = false;
+  }
+
+  // ---- 4. MAX30102 -> smoothed heart rate (0 means unavailable/no contact) ----
   updatePulseSensor();
 
-  // ---- 4. Pack: 5 flex + 3x int16 gyro + uint16 BPM = 13 bytes ----
-  // Layout MUST match gesture_sources.py's PACKET_FORMAT_V2 = "<5B3hH"
-  uint8_t packet[13];
-  memcpy(packet, flexPct, 5);
-  memcpy(packet + 5, &yaw16, 2);
-  memcpy(packet + 7, &pitch16, 2);
-  memcpy(packet + 9, &roll16, 2);
-  memcpy(packet + 11, &currentBpm, 2);
+  // ---- 5. Pack: version + flags + sensors = 15 bytes ----
+  // Layout MUST match gesture_sources.py's PACKET_FORMAT_V3 = "<BB5B3hH".
+  uint8_t packet[15];
+  packet[0] = PACKET_VERSION;
+  packet[1] = flags;
+  memcpy(packet + 2, flexPct, 5);
+  memcpy(packet + 7, &yaw16, 2);
+  memcpy(packet + 9, &pitch16, 2);
+  memcpy(packet + 11, &roll16, 2);
+  memcpy(packet + 13, &currentBpm, 2);
 
   pCharacteristic->setValue(packet, sizeof(packet));
   pCharacteristic->notify();

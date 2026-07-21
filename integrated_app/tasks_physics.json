@@ -331,6 +331,8 @@
           "type": "gesture_task",
           "prompt": "Rotate one wheel and observe how the differential distributes power.",
           "expected_gesture": "grab",
+          "rotation_target": "Differential",
+          "rotation_required_degrees": 35,
           "animation": null,
           "mini_tutorial_id": "mini_phy_differential_working",
           "mini_tutorial_title": "Differential Working",

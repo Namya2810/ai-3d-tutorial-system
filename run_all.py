@@ -7,10 +7,23 @@ import subprocess
 import sys
 import time
 import os
+import signal
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 children = []
+shutdown_requested = False
+
+
+def stop_children(*_args):
+    """Idempotent Ctrl+C/termination handler for all local services."""
+    global shutdown_requested
+    if shutdown_requested:
+        return
+    shutdown_requested = True
+    for process in reversed(children):
+        if process.poll() is None:
+            process.terminate()
 
 
 def wait_port(port, timeout=12):
@@ -31,6 +44,9 @@ def start(command, cwd, env=None):
 
 
 def main():
+    signal.signal(signal.SIGINT, stop_children)
+    if hasattr(signal, "SIGTERM"):
+        signal.signal(signal.SIGTERM, stop_children)
     python = sys.executable
     print("Starting local profile dashboard...")
     start([python, "app.py"], ROOT / "student_profile_module")
@@ -60,6 +76,4 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     finally:
-        for process in reversed(children):
-            if process.poll() is None:
-                process.terminate()
+        stop_children()

@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QStackedWidget, QLabel
+from PyQt6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QStackedWidget, QLabel, QMessageBox
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QKeySequence, QShortcut
 
@@ -9,6 +9,7 @@ from ui.quiz_page import QuizPage
 from ui.profile_page import ProfilePage
 from ui.mini_tutorial_page import MiniTutorialPage
 from ui.prompt_banner import PromptBanner
+from ui.numeric_input_dialog import TitrationCalculationDialog
 from voice.assistant_panel import AssistantPanel
 from voice.avatar_checkin import AvatarCheckinThread
 from voice.task_voice_thread import PromptSpeechThread, TaskVoiceThread
@@ -120,6 +121,9 @@ class MainWindow(QMainWindow):
         # session-level confusion score + segment-weighted questions.
         self.quiz_page = QuizPage(session_state=session_state, task_engine=self.tutorial_page.task_engine)
         self.profile_page = ProfilePage(session_state=session_state)
+        self.profile_page.login_succeeded.connect(
+            lambda _student_id: self._show(self.home_page)
+        )
         self.mini_tutorial_page = MiniTutorialPage()
         self.mini_tutorial_page.continue_clicked.connect(self._on_mini_tutorial_continue)
 
@@ -206,7 +210,8 @@ class MainWindow(QMainWindow):
         self._confusion_timer.timeout.connect(self._tick)
         self._confusion_timer.start(1000)  # recompute once a second
 
-        self._show(self.home_page)
+        self._login_required = bool(setting("ui", "require_login"))
+        self._show(self.profile_page if self._login_required else self.home_page)
 
     def _set_anaglyph_enabled(self, enabled):
         """Enable true red/cyan stereo rendering for the 3D scene."""
@@ -295,6 +300,12 @@ class MainWindow(QMainWindow):
         """HomePage se subject-card click hone par yahan aata hai - naya
         tasks.json load karo, saare 'kaunsa task chal raha hai' guards
         reset karo, aur 3D tutorial page pe le jao."""
+        if self._login_required and not self.session_state.student_id:
+            QMessageBox.information(
+                self, "Sign in required", "Please sign in before starting a lesson."
+            )
+            self._show(self.profile_page)
+            return
         tasks_file = SUBJECT_TASKS_FILES.get(subject_key)
         if not tasks_file:
             return
@@ -409,6 +420,8 @@ class MainWindow(QMainWindow):
         if task["type"] == "voice_question":
             self.tutorial_page.set_learning_state("Teacher speaking", "speaking")
             self._start_task_voice(task)
+        elif task["type"] == "numeric_question":
+            self._start_numeric_question(task)
         elif task["type"] == "gesture_task":
             # Banner dikhao (prompt bataane ke liye), phir thodi der baad
             # khud vanish ho jaayega taaki gesture/3D session ke liye poori
@@ -427,6 +440,32 @@ class MainWindow(QMainWindow):
                     self._on_gesture_prompt_finished(task_id, task_token, flow)
             )
             self._prompt_speech_thread.start()
+
+    def _start_numeric_question(self, task):
+        """Use deterministic local input for values speech recognition mangles."""
+        self.prompt_banner.show_prompt(
+            task["prompt"], mode="question", context_label=self._task_context_label()
+        )
+        self.tutorial_page.task_engine.mark_asked()
+        dialog = TitrationCalculationDialog(task, self)
+        accepted = dialog.exec() == dialog.DialogCode.Accepted
+        self.prompt_banner.hide_banner()
+        if not accepted:
+            self.tutorial_page.task_engine.record_result(False)
+            self._begin_failure_transition(
+                "wrong_answer", "No calculation was submitted. Let me show the method."
+            )
+            return
+        expected = float(task["expected_numeric_answer"])
+        tolerance = float(task.get("numeric_tolerance", 0.05))
+        correct = abs(dialog.calculated_value() - expected) <= tolerance
+        self.tutorial_page.task_engine.record_result(correct)
+        if correct:
+            self._begin_success_transition("Correct calculation - well done.")
+        else:
+            self._begin_failure_transition(
+                "wrong_answer", "Check final reading minus initial reading."
+            )
 
     def _on_gesture_prompt_finished(self, task_id, token, generation):
         if generation != self._flow_generation:
@@ -460,7 +499,7 @@ class MainWindow(QMainWindow):
         """Choose a fair response window from the cognitive/motor workload."""
         if task.get("timeout_ms"):
             return int(task["timeout_ms"])
-        if task.get("type") == "voice_question":
+        if task.get("type") in ("voice_question", "numeric_question"):
             return VOICE_QUESTION_TIMEOUT_MS
         interaction = task.get("interaction") or {}
         if interaction.get("type") == "grab_drag_path":

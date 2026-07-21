@@ -17,6 +17,7 @@ DEFAULTS = {
     },
     "pulse": {"resting_bpm": 70, "elevated_bpm": 110, "valid_min": 35, "valid_max": 220},
     "glove_logging": {"enabled": True, "flush_every_rows": 30},
+    "ui": {"require_login": False},
 }
 
 

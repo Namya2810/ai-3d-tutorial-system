@@ -26,11 +26,16 @@ from app_config import setting
 # ---- Firmware (glove_firmware.ino) ke saath EXACTLY match hona chahiye ----
 BLE_DEVICE_NAME = "GestureGlove"
 CHARACTERISTIC_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
-# V1: 5 flex bytes + 3 gyro int16 = 11 bytes.
-# V2: the same payload followed by uint16 BPM = 13 bytes. Accepting both
-# formats lets an older glove firmware connect during a staged upgrade.
+# Legacy V1/V2 packets remain accepted during a staged firmware upgrade.
+# Versioned V2 has a leading version byte; V3 adds a flags byte so firmware
+# can request a pointer recenter without changing the fixed glove wiring.
 PACKET_FORMAT_V1 = "<5B3h"
 PACKET_FORMAT_V2 = "<5B3hH"
+PACKET_FORMAT_VERSIONED_V2 = "<B5B3hH"
+PACKET_FORMAT_V3 = "<BB5B3hH"
+PACKET_VERSION_V2 = 2
+PACKET_VERSION_V3 = 3
+PACKET_FLAG_RECENTER = 0x01
 SCAN_TIMEOUT_SECONDS = 10.0
 RECONNECT_DELAY_SECONDS = 2.0
 
@@ -69,7 +74,7 @@ class GloveGestureSource:
         self._log_writer = None
         self._log_rows_since_flush = 0
 
-    def _log_packet(self, now, flex, gyro, bpm):
+    def _log_packet(self, now, flex, gyro, bpm, packet_version=0, flags=0):
         if not bool(setting("glove_logging", "enabled")):
             return
         if self._log_file is None:
@@ -82,7 +87,7 @@ class GloveGestureSource:
             fields = [
                 "timestamp_utc", "monotonic_seconds", "thumb", "index",
                 "middle", "ring", "pinky", "yaw_dps", "pitch_dps",
-                "roll_dps", "pulse_bpm",
+                "roll_dps", "pulse_bpm", "packet_version", "packet_flags",
             ]
             self._log_writer = csv.DictWriter(self._log_file, fieldnames=fields)
             self._log_writer.writeheader()
@@ -93,6 +98,8 @@ class GloveGestureSource:
             "ring": flex[3], "pinky": flex[4],
             "yaw_dps": gyro[0], "pitch_dps": gyro[1], "roll_dps": gyro[2],
             "pulse_bpm": bpm if bpm else "",
+            "packet_version": packet_version,
+            "packet_flags": flags,
         })
         self._log_rows_since_flush += 1
         if self._log_rows_since_flush >= int(setting("glove_logging", "flush_every_rows")):
@@ -145,15 +152,30 @@ class GloveGestureSource:
         print("[Glove] Disconnected")
 
     def _on_notification(self, sender, data: bytearray):
-        """Firmware har ~33ms mein ye 11-byte packet bhejta hai. Yahan sirf
+        """Firmware har ~33ms mein ek supported packet bhejta hai. Yahan sirf
         latest values store karte hain - process() jab bhi poochega tab tak
         ka sabse recent reading use hoga."""
         try:
-            if len(data) == struct.calcsize(PACKET_FORMAT_V2):
+            flags = 0
+            if len(data) == struct.calcsize(PACKET_FORMAT_V3):
+                version, flags, thumb, index, middle, ring, pinky, yaw16, pitch16, roll16, bpm = struct.unpack(
+                    PACKET_FORMAT_V3, bytes(data)
+                )
+                if version != PACKET_VERSION_V3:
+                    return
+            elif len(data) == struct.calcsize(PACKET_FORMAT_VERSIONED_V2):
+                version, thumb, index, middle, ring, pinky, yaw16, pitch16, roll16, bpm = struct.unpack(
+                    PACKET_FORMAT_VERSIONED_V2, bytes(data)
+                )
+                if version != PACKET_VERSION_V2:
+                    return
+            elif len(data) == struct.calcsize(PACKET_FORMAT_V2):
+                version = 0
                 thumb, index, middle, ring, pinky, yaw16, pitch16, roll16, bpm = struct.unpack(
                     PACKET_FORMAT_V2, bytes(data)
                 )
             elif len(data) == struct.calcsize(PACKET_FORMAT_V1):
+                version = 0
                 thumb, index, middle, ring, pinky, yaw16, pitch16, roll16 = struct.unpack(
                     PACKET_FORMAT_V1, bytes(data)
                 )
@@ -165,7 +187,7 @@ class GloveGestureSource:
         now = time.monotonic()
         gyro = (yaw16 / 100.0, pitch16 / 100.0, roll16 / 100.0)
         raw_flex = (thumb, index, middle, ring, pinky)
-        self._log_packet(now, raw_flex, gyro, bpm)
+        self._log_packet(now, raw_flex, gyro, bpm, version, flags)
         with self._lock:
             alpha = self.SENSOR_SMOOTHING
             self._latest_flex = [
@@ -181,10 +203,15 @@ class GloveGestureSource:
             valid_min = float(setting("pulse", "valid_min"))
             valid_max = float(setting("pulse", "valid_max"))
             self.pulse_bpm = float(bpm) if valid_min <= bpm <= valid_max else None
+            if flags & PACKET_FLAG_RECENTER:
+                self._pointer_x = 0.5
+                self._pointer_y = 0.5
+                self._latest_gyro = (0.0, 0.0, 0.0)
             # MPU6050 angular velocity drives a relative on-screen tool cursor.
             # This avoids needing the camera for pointing while the glove is worn.
-            self._pointer_x = max(0.03, min(0.97, self._pointer_x + gyro[0] * dt * self.POINTER_GAIN))
-            self._pointer_y = max(0.03, min(0.97, self._pointer_y + gyro[1] * dt * self.POINTER_GAIN))
+            if not (flags & PACKET_FLAG_RECENTER):
+                self._pointer_x = max(0.03, min(0.97, self._pointer_x + gyro[0] * dt * self.POINTER_GAIN))
+                self._pointer_y = max(0.03, min(0.97, self._pointer_y + gyro[1] * dt * self.POINTER_GAIN))
 
     def process(self, frame=None):
         # frame yahan use nahi hota - glove ko camera image ki zaroorat nahi

@@ -18,7 +18,7 @@ turant jaan le "kiske liye score/response-time log karna hai", bina kisi
 polling/refresh ke.
 """
 
-from PyQt6.QtCore import QObject, QUrl, pyqtSlot
+from PyQt6.QtCore import QObject, QUrl, pyqtSignal, pyqtSlot
 from PyQt6.QtWebChannel import QWebChannel
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWidgets import QVBoxLayout, QWidget
@@ -29,6 +29,8 @@ PROFILE_MODULE_URL = "http://localhost:5000/"
 class StudentBridge(QObject):
     """JS se call hone wala object - QWebChannel se JS ko available hota hai."""
 
+    logged_in = pyqtSignal(str)
+
     def __init__(self, session_state):
         super().__init__()
         self.session_state = session_state
@@ -38,9 +40,12 @@ class StudentBridge(QObject):
         if self.session_state:
             self.session_state.student_id = student_id
             self.session_state.student_name = student_id  # index.html apna naam alag se render karta hai
+        self.logged_in.emit(student_id)
 
 
 class ProfilePage(QWidget):
+    login_succeeded = pyqtSignal(str)
+
     def __init__(self, session_state=None, url=PROFILE_MODULE_URL):
         super().__init__()
         self.setObjectName("ProfilePage")
@@ -52,6 +57,7 @@ class ProfilePage(QWidget):
 
         self.channel = QWebChannel(self.view.page())
         self.bridge = StudentBridge(session_state)
+        self.bridge.logged_in.connect(self.login_succeeded)
         self.channel.registerObject("bridge", self.bridge)
         self.view.page().setWebChannel(self.channel)
 

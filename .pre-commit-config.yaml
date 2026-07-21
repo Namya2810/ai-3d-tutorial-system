@@ -1,0 +1,19 @@
+repos:
+  - repo: local
+    hooks:
+      - id: python-compile
+        name: Python syntax
+        entry: integrated_app/venv/Scripts/python.exe -m compileall -q integrated_app run_all.py software_preflight.py
+        language: system
+        pass_filenames: false
+      - id: task-targets
+        name: Task and scene target validation
+        entry: integrated_app/venv/Scripts/python.exe integrated_app/tools/validate_task_targets.py
+        language: system
+        pass_filenames: false
+      - id: unit-tests
+        name: Core unit tests
+        entry: integrated_app/venv/Scripts/python.exe integrated_app/run_tests.py
+        language: system
+        pass_filenames: false
+        stages: [pre-push]

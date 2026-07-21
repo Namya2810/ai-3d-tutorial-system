@@ -1,110 +1,82 @@
-# ESP32 Glove → AI 3D Tutor integration
+# ESP32 glove to AI 3D Tutor integration
 
-## 1. Hardware wiring
+## Fixed hardware map
 
-The MPU6050 and MAX30102 can share the ESP32 I²C bus:
+Do not rewire the completed glove. The firmware uses its existing mapping:
 
-| Module | ESP32 |
+| Input | ESP32 pin |
 |---|---|
-| MPU6050 SDA | GPIO 21 |
-| MPU6050 SCL | GPIO 22 |
-| MAX30102 SDA | GPIO 21 |
-| MAX30102 SCL | GPIO 22 |
-| Both GND | GND |
-| Both VCC | 3.3 V (use the voltage supported by the specific breakout) |
+| Thumb flex | GPIO 25 |
+| Index flex | GPIO 33 |
+| Middle flex | GPIO 32 |
+| Ring flex | GPIO 35 |
+| Pinky flex | GPIO 34 |
+| MPU6050 + MAX30102 SDA | GPIO 21 |
+| MPU6050 + MAX30102 SCL | GPIO 22 |
 
-Keep flex sensors on ADC1 pins GPIO 32, 33, 34, 35 and 36. Do not move them
-to ADC2 pins because ADC2 is unreliable while ESP32 Bluetooth/Wi-Fi is active.
+GPIO25 is ADC2. The supplied firmware uses BLE and does not enable Wi-Fi, so
+the existing thumb connection is supported. Do not add ESP32 Wi-Fi while
+reading it. Both I2C modules share ground and the voltage supported by their
+breakout boards (normally 3.3 V for this build).
 
-The MAX30102 optical window must press gently and steadily against skin. Place it
-on the inner wrist or a fingertip pad, block ambient light with soft dark foam,
-and avoid overtightening it. A sensor facing away from skin cannot measure BPM.
+## Arduino setup and upload
 
-## 2. Install Arduino software
+Install the ESP32 board package and these libraries:
 
-1. Install Arduino IDE 2.x.
-2. Add Espressif's ESP32 board package in Boards Manager.
-3. In Library Manager install:
-   - Adafruit MPU6050
-   - Adafruit Unified Sensor
-   - Adafruit BusIO
-   - SparkFun MAX3010x Sensor Library
-4. Open `glove_firmware.ino` from this folder.
-5. Select the appropriate ESP32 Dev Module and its COM port.
-6. Compile, then upload.
+- Adafruit MPU6050 (plus Unified Sensor and BusIO dependencies)
+- SparkFun MAX3010x Sensor Library
 
-## 3. First calibration
+Open `glove_firmware/glove_firmware.ino`, select ESP32 Dev Module and the
+correct COM port, Verify, then Upload. Serial Monitor must use 115200 baud.
 
-1. Open Serial Monitor at 115200 baud and reset the ESP32.
-2. Hold all five fingers fully straight when prompted.
-3. Make a comfortable closed fist when prompted.
-4. Calibration is saved in ESP32 non-volatile memory.
-5. To recalibrate, hold the ESP32 BOOT button during power-on/reset.
+## First calibration
 
-Calibration must be performed while wearing the glove. Do not manually copy the
-placeholder ADC values from another person because glove fit and flex resistance vary.
+On first boot, wear the glove and follow the Serial Monitor prompts: first hold
+all fingers straight, then make a comfortable closed fist. Values are saved in
+ESP32 Preferences. Hold the BOOT button while resetting to recalibrate later.
 
-## 4. BLE protocol
+## BLE protocol
 
 The ESP32 advertises as `GestureGlove` and notifies characteristic
-`6e400002-b5a3-f393-e0a9-e50e24dcca9e` approximately 30 times per second.
+`6e400002-b5a3-f393-e0a9-e50e24dcca9e` at about 30 Hz.
 
-The new packet is 13 bytes, little-endian: `<5B3hH`:
+Current packet: 15-byte little-endian `<BB5B3hH`:
 
-- 5 bytes: thumb, index, middle, ring, pinky curl percentages (0–100)
-- 3 signed int16: yaw, pitch and roll angular velocity ×100
-- 1 uint16: smoothed BPM; zero means no valid skin contact
+- protocol version byte (`3`)
+- event flags byte (`0x01` means recenter pointer)
+- five curl percentages: thumb, index, middle, ring, pinky
+- yaw, pitch, roll signed int16 values in degrees/second times 100
+- uint16 BPM; zero means unavailable/no skin contact
 
-The application still accepts the older 11-byte packet, but it cannot obtain BPM
-from that version.
+The desktop app remains compatible with legacy 11-byte, 13-byte, and
+versioned 14-byte packets.
 
-## 5. Run the application
+## Gesture contract
 
-1. Turn the glove on first.
-2. Enable Bluetooth on the laptop. Manual Windows pairing is normally unnecessary
-   because the application scans and connects using BLE.
-3. Activate the project's Python environment.
-4. Run `python main.py` from `integrated_app`.
-5. Watch the terminal for `[Glove] Connected over BLE`.
-6. The tutorial status line should change from `camera` to `glove` and show BPM
-   after stable skin contact and several detected beats.
-
-If the glove disconnects, the application temporarily uses camera gestures and
-automatically rescans every two seconds.
-
-## 6. Current gesture contract
-
-| Physical action | Application action |
+| Physical action | App action |
 |---|---|
-| Index straight, other fingers bent | POINT/select anatomy |
-| Thumb and index bent, remaining fingers relaxed | PRECISION GRAB/tool pickup |
-| Closed fist plus wrist movement | Rotate the 3D model |
-| Open hand | Release/cancel |
-| Wrist yaw/pitch | Move the relative tool cursor |
+| Index straight, other fingers bent | Point/select |
+| Thumb-index precision grip | Pick up/use a tool |
+| Closed fist plus wrist movement | Rotate model |
+| Pinch plus vertical movement | Zoom |
+| Open hand | Release |
+| Open hand held still for 1.5 seconds | Recenter pointer |
 
-Use an open-hand hold as the neutral/rest pose between actions. Tool pickup is
-confirmed only after several matching packets to prevent accidental activation.
+## Run and validate
 
-## 7. Pulse troubleshooting
+1. Turn on the glove and laptop Bluetooth.
+2. Start the full app from the project root with `python run_all.py`.
+3. Confirm `[Glove] Connected over BLE` in the terminal.
+4. Test release, point, precision grip, rotate, zoom and recenter in that order.
+5. Hold the pulse sensor steadily against skin for several beats.
+6. Run the kidney dissection end to end.
 
-- `0 BPM`: no skin contact, sensor reversed, wiring issue, or insufficient time.
-- Unrealistically high/low BPM: motion artefacts; secure the sensor and keep the
-  wrist still for the first 10–15 seconds.
-- MAX30102 not found: run an I²C scanner; expected addresses are commonly 0x57
-  for MAX30102 and 0x68/0x69 for MPU6050.
-- App connects but reports no pulse: confirm the firmware is the 13-byte version.
-- Do not treat this prototype as a medical device. BPM is used only as a noisy
-  learning-adaptation signal and should be combined with interaction history.
+Raw packets are stored under `integrated_app/data/glove_sessions/` when
+`glove_logging.enabled` is true in `runtime_config.json`. From
+`integrated_app`, run `python tools/glove_log_summary.py` to inspect the latest
+session. This prototype is not a medical device; BPM is only an adaptation
+signal.
 
-## 8. Recommended validation sequence
-
-Test one layer at a time:
-
-1. Serial Monitor: verify five curl percentages and MAX30102 detection.
-2. BLE: verify `[Glove] Connected over BLE` in the application terminal.
-3. Neutral pose: confirm OPEN/RELEASE is stable.
-4. POINT and PRECISION GRAB: test each ten times and record false activations.
-5. Cursor: recenter, then test slow yaw/pitch movement.
-6. BPM: hold still until four valid beats populate the moving average.
-7. Finally run the kidney dissection task end to end.
-
+If MAX30102 is not found, run an I2C scanner. Expected addresses are commonly
+0x57 for MAX30102 and 0x68/0x69 for MPU6050. If only 0x68 appears, check the
+repaired MAX30102 joints before changing software.

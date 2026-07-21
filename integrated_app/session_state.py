@@ -13,20 +13,21 @@ CHANGE (task-based interactive session ke liye):
   - current_task_id add kiya - task_engine.py isko set karta hai, avatar
     check-in aur quiz isko padhte hain.
 
-Thread-safety note: PyQt signals already GUI thread pe deliver hote hain
-(VoiceConversationThread bhi signals hi emit karta hai), isliye simple
-attribute read/write yahan safe hai - koi extra lock nahi chahiye jab tak
-tum khud koi raw background thread se isse seedha nahi likhte.
+Updates can also arrive from BLE, camera and voice worker threads. A re-entrant
+lock protects compound history/counter updates while preserving the existing
+simple attribute API used by the UI.
 """
 
 from collections import deque
 from dataclasses import dataclass, field
 from time import time
+from threading import RLock
 from app_config import setting
 
 
 @dataclass
 class SessionState:
+    _lock: RLock = field(default_factory=RLock, init=False, repr=False)
     # ---- Kaun / kaunsa content ----
     student_id: str = None
     student_name: str = None
@@ -43,9 +44,8 @@ class SessionState:
     wrong_gesture_count: int = 0            # expected gesture na milne par teammate isko increment kare
 
     # ---- Glove hardware se (pulse) ----
-    # ESP32 glove abhi tak nahi bana (roadmap: hardware pending) - jab tak
-    # update_pulse() kabhi call nahi hota, ye None rehta hai aur confusion
-    # engine emotion-only fallback pe chala jaata hai.
+    # BLE glove se live value; sensor/contact unavailable ho to None rehta
+    # hai aur confusion engine emotion-only fallback par chala jaata hai.
     pulse_bpm: float = None
     _pulse_history: deque = field(default_factory=lambda: deque(maxlen=150))  # ~5s @30Hz
 
@@ -94,10 +94,11 @@ class SessionState:
         """face_result: VR module ke FaceModule.process() se mila FaceResult (ya None)."""
         if face_result is None:
             return
-        self.attention_state = face_result.state
-        self.emotion = face_result.emotion
-        self._emotion_history.append(face_result.emotion)
-        self._attention_history.append(face_result.state)
+        with self._lock:
+            self.attention_state = face_result.state
+            self.emotion = face_result.emotion
+            self._emotion_history.append(face_result.emotion)
+            self._attention_history.append(face_result.state)
 
     def update_gesture(self, gesture_event, expected_gesture=None):
         """gesture_event: VR module ke GestureModule.process() se mila GestureEvent (ya None).
@@ -106,42 +107,49 @@ class SessionState:
         """
         if gesture_event is None:
             return
-        self.last_gesture = gesture_event.gesture
-        if expected_gesture and gesture_event.gesture not in (expected_gesture, "none"):
-            self.wrong_gesture_count += 1
+        with self._lock:
+            self.last_gesture = gesture_event.gesture
+            if expected_gesture and gesture_event.gesture not in (expected_gesture, "none"):
+                self.wrong_gesture_count += 1
 
     def update_pulse(self, bpm):
         """Glove hardware isko call karega (ESP32 se). bpm=None safe hai -
         confusion engine automatically emotion-only fallback pe chala jaata hai."""
         if bpm is None:
             return
-        self.pulse_bpm = bpm
-        self._pulse_history.append(bpm)
+        with self._lock:
+            self.pulse_bpm = bpm
+            self._pulse_history.append(bpm)
 
     def register_help_request(self):
-        self.help_requests += 1
+        with self._lock:
+            self.help_requests += 1
 
     def register_repeat_request(self):
-        self.repeat_requests += 1
+        with self._lock:
+            self.repeat_requests += 1
 
     def register_timeout(self):
-        self.timeout_count += 1
+        with self._lock:
+            self.timeout_count += 1
 
     def register_quiz_answer(self, correct: bool, response_time_seconds: float):
-        self.quiz_total_answers += 1
-        if not correct:
-            self.quiz_wrong_answers += 1
-        self.quiz_response_times.append(response_time_seconds)
+        with self._lock:
+            self.quiz_total_answers += 1
+            if not correct:
+                self.quiz_wrong_answers += 1
+            self.quiz_response_times.append(response_time_seconds)
 
     def reset_quiz_counters(self):
         """Naya quiz/subtopic shuru hone par purane counters saaf karo, taaki
         purane topic ka confusion naye topic pe carry-over na ho."""
-        self.quiz_response_times = []
-        self.quiz_wrong_answers = 0
-        self.quiz_total_answers = 0
-        self.wrong_gesture_count = 0
-        self.help_requests = 0
-        self.repeat_requests = 0
+        with self._lock:
+            self.quiz_response_times = []
+            self.quiz_wrong_answers = 0
+            self.quiz_total_answers = 0
+            self.wrong_gesture_count = 0
+            self.help_requests = 0
+            self.repeat_requests = 0
 
     # ------------------------------------------------------------------
     # Confusion engine yeh helper properties padhta hai
@@ -184,15 +192,17 @@ class SessionState:
         uske against score jama karo. Isi se PER-MINI-TUT confusion niklega."""
         if not task_id:
             return
-        self.task_confusion_scores.setdefault(task_id, []).append(score)
+        with self._lock:
+            self.task_confusion_scores.setdefault(task_id, []).append(score)
 
     def task_confusion_score(self, task_id, default=0.5):
         """Ek particular task/mini-tut ka confusion score (0.0-1.0), uske saare
         recorded ticks ka average. Kabhi record hi nahi hua to neutral default (0.5)."""
-        scores = self.task_confusion_scores.get(task_id)
-        if not scores:
-            return default
-        return sum(scores) / len(scores)
+        with self._lock:
+            scores = list(self.task_confusion_scores.get(task_id, ()))
+            if not scores:
+                return default
+            return sum(scores) / len(scores)
 
     @property
     def quiz_accuracy(self):
@@ -217,10 +227,12 @@ class SessionState:
     def total_mini_tutorial_plays(self):
         """Total kitni baar (sab tasks milaake) koi mini-tutorial khula -
         roadmap ka 'kitni baar khule' wala raw count."""
-        return sum(self.mini_tutorials_played.values())
+        with self._lock:
+            return sum(self.mini_tutorials_played.values())
 
     def record_live_score(self, score):
-        self._live_score_history.append(score)
+        with self._lock:
+            self._live_score_history.append(score)
 
     @property
     def avg_live_score(self):

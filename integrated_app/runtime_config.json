@@ -17,5 +17,8 @@
   "glove_logging": {
     "enabled": true,
     "flush_every_rows": 30
+  },
+  "ui": {
+    "require_login": false
   }
 }

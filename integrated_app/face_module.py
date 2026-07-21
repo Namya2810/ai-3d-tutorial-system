@@ -130,7 +130,8 @@ class FaceModule:
     def process(self, frame):
         """
         frame: CameraManager.get_frame() se mila hua BGR image
-        return: FaceResult (agar face mila), warna None
+        return: FaceResult. Face na mile to explicit ``face_lost`` state,
+        so poor lighting/camera loss is distinguishable from neutral attention.
         """
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = self.face_mesh.process(rgb)
@@ -141,7 +142,11 @@ class FaceModule:
                 self._last_status = False
             self._closed_frame_count = 0
             self._ear_history.clear()
-            return None
+            return FaceResult(
+                landmarks=None,
+                state="face_lost",
+                emotion="Face not detected",
+            )
 
         if self._last_status is not True:
             print("[FaceModule] Face detected")

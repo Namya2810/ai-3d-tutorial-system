@@ -176,20 +176,16 @@
         },
         {
           "task_id": "chem_t15_titration_calculations",
-          "type": "voice_question",
-          "prompt": "How is the titre value calculated from the burette readings?",
+          "type": "numeric_question",
+          "prompt": "Initial burette reading is 4.60 mL and final reading is 23.00 mL. Calculate the titre value.",
+          "initial_reading_ml": 4.6,
+          "final_reading_ml": 23.0,
+          "expected_numeric_answer": 18.4,
+          "numeric_tolerance": 0.05,
           "animation": null,
           "mini_tutorial_id": "mini_chem_titration_calculations",
           "mini_tutorial_title": "Titration Calculations",
           "mini_tutorial_video": "static/mini_tutorials/chem/Titration Calculations.mp4",
-          "expected_keywords": [
-            "titre",
-            "final reading",
-            "initial reading",
-            "subtract",
-            "difference"
-          ],
-          "min_keyword_matches": 1,
           "concept_hint": "Titre value = final burette reading minus initial burette reading."
         }
       ]

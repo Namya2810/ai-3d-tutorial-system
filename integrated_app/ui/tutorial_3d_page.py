@@ -15,6 +15,7 @@ dekhta hai). Ye page sirf:
 
 import os
 import json
+import time
 from dataclasses import dataclass
 
 import cv2
@@ -70,6 +71,8 @@ class Tutorial3DPage(QWidget):
         self._last_shown_task_id = None
         self._interaction_query_pending = False
         self._interaction_query_serial = 0
+        self._last_interaction_query_at = 0.0
+        self._task_rotation_progress = 0.0
 
         # app_window.py isko set karta hai - jab is page ko gesture_task ke
         # liye ek event mila, wahan bhej dete hain taaki wo match/mismatch
@@ -182,7 +185,29 @@ class Tutorial3DPage(QWidget):
         ]
 
         if event:
-            if expects_gesture and current_task.get("expected_targets"):
+            rotation_target = current_task.get("rotation_target")
+            if rotation_target and event.gesture == current_task.get("expected_gesture"):
+                delta_degrees = float(event.dx) * 60.0
+                self.view.page().runJavaScript(
+                    f"rotateTaskObject({json.dumps(rotation_target)}, {delta_degrees});"
+                )
+                self._task_rotation_progress += abs(delta_degrees)
+                status_lines.append(
+                    f"Gesture: GRAB + TURN ({self._task_rotation_progress:.0f} degrees)"
+                )
+                if self._task_rotation_progress >= float(
+                    current_task.get("rotation_required_degrees", 35)
+                ):
+                    self._task_rotation_progress = 0.0
+                    if self.on_gesture_event:
+                        self.on_gesture_event(ObjectInteractionEvent(
+                            gesture=event.gesture,
+                            target_id=rotation_target,
+                            all_targets_complete=True,
+                            selected_targets=(rotation_target,),
+                        ))
+                js = "void 0;"
+            elif expects_gesture and current_task.get("expected_targets"):
                 # During object tasks POINT remains selection, while PINCH
                 # zooms and GRAB-drag rotates the model for inspection.
                 if event.gesture == "pinch" and expected_gesture != "pinch":
@@ -227,7 +252,7 @@ class Tutorial3DPage(QWidget):
 
             # Gesture_task waiting ho to app_window.py ko bata do - wahi
             # match/mismatch decide karke task_engine.record_result() bulata hai.
-            if expects_gesture and self.on_gesture_event:
+            if expects_gesture and self.on_gesture_event and not rotation_target:
                 if (
                     not current_task.get("expected_targets")
                     or event.gesture not in ("none", expected_gesture)
@@ -246,6 +271,7 @@ class Tutorial3DPage(QWidget):
         task = self.task_engine.current_task()
         if task["task_id"] != self._last_shown_task_id:
             self._last_shown_task_id = task["task_id"]
+            self._task_rotation_progress = 0.0
             title = task["prompt"].replace("'", "\\'")
             current_no, total_tasks = self.task_engine.current_task_position()
             self.view.page().runJavaScript(f"setSegmentInfo('{title}');")
@@ -269,8 +295,14 @@ class Tutorial3DPage(QWidget):
 
     def _send_object_interaction(self, event):
         """Move the 3D cursor and receive a completed raycast selection."""
+        now = time.monotonic()
+        # 10 Hz is smooth enough for the cursor and avoids 30 synchronous
+        # Python <-> WebEngine round-trips per second on slower laptops.
+        if now - self._last_interaction_query_at < 0.1:
+            return
         if self._interaction_query_pending:
             return
+        self._last_interaction_query_at = now
         x = getattr(event, "pointer_x", None)
         y = getattr(event, "pointer_y", None)
         x_js = "null" if x is None else str(float(x))
@@ -284,7 +316,7 @@ class Tutorial3DPage(QWidget):
             if self._interaction_query_serial == query_serial:
                 self._interaction_query_pending = False
 
-        QTimer.singleShot(500, release_stale_query)
+        QTimer.singleShot(350, release_stale_query)
 
         def receive(result):
             self._interaction_query_pending = False

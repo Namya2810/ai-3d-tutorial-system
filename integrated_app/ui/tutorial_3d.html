@@ -137,6 +137,8 @@ let interactionTask = {enabled:false, expected_targets:[]};
 let selectedTargets = new Set();
 let hoveredTarget = null, hoverStartedAt = 0, lastSelectionAt = 0;
 let virtualPointer = {x:0.5, y:0.5};
+let displayedPointer = {x:0.5, y:0.5};
+let webglContextLost = false;
 const originalMaterials = new Map();
 let draggingTool = false;
 let lastGrabAt = 0;
@@ -187,6 +189,23 @@ function initThree(){
   const canvas = document.getElementById('glcanvas');
   const stage = document.getElementById('viewerStage');
   renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+  canvas.addEventListener('webglcontextlost', event => {
+    event.preventDefault();
+    webglContextLost = true;
+    document.getElementById('modelLoading').classList.add('active');
+    setInteractionHint('3D renderer paused — restoring graphics…');
+  }, false);
+  canvas.addEventListener('webglcontextrestored', () => {
+    webglContextLost = false;
+    if(anaglyphTargetL) anaglyphTargetL.dispose();
+    if(anaglyphTargetR) anaglyphTargetR.dispose();
+    anaglyphTargetL = null; anaglyphTargetR = null;
+    anaglyphScene = null; anaglyphCamera = null; anaglyphMaterial = null;
+    if(anaglyphEnabled) initAnaglyph();
+    resize();
+    document.getElementById('modelLoading').classList.remove('active');
+    setInteractionHint('');
+  }, false);
   clock = new THREE.Clock();
 
   const resize = () => {
@@ -269,7 +288,9 @@ function loadModel(glbPath){
       }
 
       modelGroup.add(model);
-      loadDissectionAssets();
+      // Scalpel and cutaway GLBs are intentionally lazy-loaded only when the
+      // dissection task asks for them. Initial anatomy tasks start faster and
+      // use less GPU memory.
       // Task configuration can arrive while the GLB is still loading. Apply
       // its scene state again now that named objects actually exist.
       setSceneState(interactionTask.scene_state || 'INITIAL');
@@ -371,6 +392,7 @@ function playAnimation(name){
 
 function animate(){
   requestAnimationFrame(animate);
+  if(webglContextLost) return;
   const delta = clock ? clock.getDelta() : 0;
   if (mixer) mixer.update(delta);
   if (autoRotate) modelGroup.rotation.y += 0.004;
@@ -397,6 +419,14 @@ function applyGestureRotate(deltaDeg, navigationOverride=false){
   if((navigationOverride || !interactionTask.enabled) && !dissectionAnimating){
     modelGroup.rotation.y += deltaDeg * (Math.PI/180) * 4;
   }
+}
+
+function rotateTaskObject(name, deltaDeg){
+  if(!loadedModel || !name) return false;
+  const object = loadedModel.getObjectByName(name);
+  if(!object) return false;
+  object.rotation.y += deltaDeg * (Math.PI / 180);
+  return true;
 }
 
 function applyGestureZoom(delta){
@@ -758,9 +788,14 @@ function updateInteractionPointer(x, y, gesture, dx, dy){
   } else {
     virtualPointer.x=x; virtualPointer.y=y;
   }
+  // Low-pass visual and raycast movement. This removes BLE/camera jitter
+  // without making the tool feel delayed at the application's 10 Hz bridge.
+  const cursorAlpha = 0.42;
+  displayedPointer.x += (virtualPointer.x - displayedPointer.x) * cursorAlpha;
+  displayedPointer.y += (virtualPointer.y - displayedPointer.y) * cursorAlpha;
   const cursor=document.getElementById('handCursor');
-  cursor.style.left=(virtualPointer.x*100)+'%'; cursor.style.top=(virtualPointer.y*100)+'%';
-  pointerNdc.set(virtualPointer.x*2-1, -(virtualPointer.y*2-1));
+  cursor.style.left=(displayedPointer.x*100)+'%'; cursor.style.top=(displayedPointer.y*100)+'%';
+  pointerNdc.set(displayedPointer.x*2-1, -(displayedPointer.y*2-1));
   raycaster.setFromCamera(pointerNdc, camera);
   const hitRoots = [loadedModel];
   if(realisticScalpelGroup && realisticScalpelGroup.visible) hitRoots.push(realisticScalpelGroup);
