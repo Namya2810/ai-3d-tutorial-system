@@ -39,10 +39,10 @@ from PyQt6.QtWidgets import (
 
 # Blackboard box ka position, background image ke fraction mein (teeno
 # classroom images - bio/chem/phy - isi ek template se bane hain)
-# Pre-drawn rounded video panel in the classroom artwork. A small inset keeps
-# the rectangular QVideoWidget away from the rounded corners. The video then
-# uses the largest possible KeepAspectRatio fit inside this exact panel.
-BOX_FRACT = {"x0": 0.410, "y0": 0.055, "x1": 0.636, "y1": 0.800}
+# Inner edge of the rounded video panel in the 1600x900 classroom artwork.
+# These values deliberately exclude the white stroke and curved corners, so
+# the rectangular black video backdrop cannot spill over the frame.
+BOX_FRACT = {"x0": 0.427, "y0": 0.076, "x1": 0.635, "y1": 0.784}
 
 # NOTE: task_engine.py ke "mini_tutorial_video" jaisa hi convention -
 # project ROOT ke relative path (CWD se resolve hota hai jab app chalti
